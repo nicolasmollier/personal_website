@@ -13,13 +13,13 @@ education:
   - course: BSc in Artificial Intelligence
     institution: Massachusetts Institute of Technology
     year: 2008
-email: ""
+email: "nicolas.mollier@gmx.de"
 interests:
 - Artificial Intelligence
 - Computational Linguistics
 - Information Retrieval
 organizations:
-- name: Stanford University
+- name: Eberhard Karls Universität Tübingen
   url: ""
 role: Professor of Artificial Intelligence
 social:
