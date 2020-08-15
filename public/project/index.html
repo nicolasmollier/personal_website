@@ -23,14 +23,14 @@
   
   
 
-  <meta name="author" content="Nelson Bighetti">
+  <meta name="author" content="Nicolas Mollier">
 
   
   
   
     
   
-  <meta name="description" content="Professor of Artificial Intelligence">
+  <meta name="description" content="Learn how to blog in Academic using Jupyter notebooks">
 
   
   <link rel="alternate" hreflang="en-us" href="/project/">
@@ -226,8 +226,6 @@
   
 
   
-  <link rel="alternate" href="/project/index.xml" type="application/rss+xml" title="Academic">
-  
 
   <link rel="manifest" href="/index.webmanifest">
   <link rel="icon" type="image/png" href="/images/icon_hu0b7a4cb9992c9ac0e91bd28ffd38dd00_9727_32x32_fill_lanczos_center_2.png">
@@ -243,35 +241,39 @@
   
   
     
-    
   
   
-  <meta property="twitter:card" content="summary">
+  <meta property="twitter:card" content="summary_large_image">
   
   <meta property="og:site_name" content="Academic">
   <meta property="og:url" content="/project/">
-  <meta property="og:title" content="Projects | Academic">
-  <meta property="og:description" content="Professor of Artificial Intelligence"><meta property="og:image" content="/images/icon_hu0b7a4cb9992c9ac0e91bd28ffd38dd00_9727_512x512_fill_lanczos_center_2.png">
-  <meta property="twitter:image" content="/images/icon_hu0b7a4cb9992c9ac0e91bd28ffd38dd00_9727_512x512_fill_lanczos_center_2.png"><meta property="og:locale" content="en-us">
+  <meta property="og:title" content="Display Jupyter Notebooks with Academic | Academic">
+  <meta property="og:description" content="Learn how to blog in Academic using Jupyter notebooks"><meta property="og:image" content="/project/featured.png">
+  <meta property="twitter:image" content="/project/featured.png"><meta property="og:locale" content="en-us">
   
-    <meta property="og:updated_time" content="2016-04-27T00:00:00&#43;00:00">
+    
+      <meta property="article:published_time" content="2019-02-05T00:00:00&#43;00:00">
+    
+    <meta property="article:modified_time" content="2019-09-05T00:00:00&#43;00:00">
   
-
-  
-
-
-
-
-  
-
 
   
 
 
 
+  
 
 
-  <title>Projects | Academic</title>
+  
+
+
+  
+
+
+
+
+
+  <title>Display Jupyter Notebooks with Academic | Academic</title>
 
 </head>
 
@@ -561,72 +563,262 @@
 
 
 
-  
-
-
-
-
-
-
-
-
-
-
-
+  <article class="article">
 
   
 
-  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   
   
     
   
-<div class="universal-wrapper pt-3">
-  <h1>Projects</h1>
+
+
+<div class="article-container pt-3">
+  <h1>Display Jupyter Notebooks with Academic</h1>
+
+  
+  <p class="page-subtitle">Learn how to blog in Academic using Jupyter notebooks</p>
+  
+
+  
+
+
+<div class="article-metadata">
+
+  
+  
+  
+  
+  <div>
+    
+
+  
+  <span ><a href="/author/nicolas-mollier/">Nicolas Mollier</a></span>
+  </div>
+  
+  
+
+  
 
   
 
   
+
+  
+  
+  
+
+  
+  
+
+</div>
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</div>
+
+
+<div class="article-header article-container featured-image-wrapper mt-4 mb-4" style="max-width: 720px; max-height: 313px;">
+  <div style="position: relative">
+    <img src="/project/featured_hub1daa031c2af6888ff37bd93eb033a1a_71549_720x0_resize_lanczos_2.png" alt="" class="featured-image">
+    
+  </div>
 </div>
 
 
 
-<div class="universal-wrapper">
-  
+  <div class="article-container">
 
-  
-  
+    <div class="article-style">
+      <pre><code class="language-python">from IPython.core.display import Image
+Image('https://www.python.org/static/community_logos/python-logo-master-v3-TM-flattened.png')
+</code></pre>
+<p><img src="./index_1_0.png" alt="png"></p>
+<pre><code class="language-python">print(&quot;Welcome to Academic!&quot;)
+</code></pre>
+<pre><code>Welcome to Academic!
+</code></pre>
+<h2 id="install-python-and-jupyterlab">Install Python and JupyterLab</h2>
+<p>
+<a href="https://www.anaconda.com/distribution/#download-section" target="_blank" rel="noopener">Install Anaconda</a> which includes Python 3 and JupyterLab.</p>
+<p>Alternatively, install JupyterLab with <code>pip3 install jupyterlab</code>.</p>
+<h2 id="create-or-upload-a-jupyter-notebook">Create or upload a Jupyter notebook</h2>
+<p>Run the following commands in your Terminal, substituting <code>&lt;MY-WEBSITE-FOLDER&gt;</code> and <code>&lt;SHORT-POST-TITLE&gt;</code> with the file path to your Academic website folder and a short title for your blog post (use hyphens instead of spaces), respectively:</p>
+<pre><code class="language-bash">mkdir -p &lt;MY-WEBSITE-FOLDER&gt;/content/post/&lt;SHORT-POST-TITLE&gt;/
+cd &lt;MY-WEBSITE-FOLDER&gt;/content/post/&lt;SHORT-POST-TITLE&gt;/
+jupyter lab index.ipynb
+</code></pre>
+<p>The <code>jupyter</code> command above will launch the JupyterLab editor, allowing us to add Academic metadata and write the content.</p>
+<h2 id="edit-your-post-metadata">Edit your post metadata</h2>
+<p>The first cell of your Jupter notebook will contain your post metadata (
+<a href="https://sourcethemes.com/academic/docs/front-matter/" target="_blank" rel="noopener">front matter</a>).</p>
+<p>In Jupter, choose <em>Markdown</em> as the type of the first cell and wrap your Academic metadata in three dashes, indicating that it is YAML front matter:</p>
+<pre><code>---
+title: My post's title
+date: 2019-09-01
+
+# Put any other Academic metadata here...
+---
+</code></pre>
+<p>Edit the metadata of your post, using the 
+<a href="https://sourcethemes.com/academic/docs/managing-content" target="_blank" rel="noopener">documentation</a> as a guide to the available options.</p>
+<p>To set a 
+<a href="https://sourcethemes.com/academic/docs/managing-content/#featured-image" target="_blank" rel="noopener">featured image</a>, place an image named <code>featured</code> into your post&rsquo;s folder.</p>
+<p>For other tips, such as using math, see the guide on 
+<a href="https://sourcethemes.com/academic/docs/writing-markdown-latex/" target="_blank" rel="noopener">writing content with Academic</a>.</p>
+<h2 id="convert-notebook-to-markdown">Convert notebook to Markdown</h2>
+<pre><code class="language-bash">jupyter nbconvert index.ipynb --to markdown --NbConvertApp.output_files_dir=.
+</code></pre>
+<h2 id="example">Example</h2>
+<p>This post was created with Jupyter. The orginal files can be found at <a href="https://github.com/gcushen/hugo-academic/tree/master/exampleSite/content/post/jupyter">https://github.com/gcushen/hugo-academic/tree/master/exampleSite/content/post/jupyter</a></p>
+
+    </div>
+
     
-    
+
+
+
+
+
+
+
+
+<div class="share-box" aria-hidden="true">
+  <ul class="share">
     
       
       
-    
-    <div>
-      <h2><a href="http://example.org" target="_blank" rel="noopener">External Project</a></h2>
-      <div class="article-style">
+      
         
-          An example of linking directly to an external project website using `external_link`.
-        
-      </div>
-    </div>
-  
+      
+      
+      
+      <li>
+        <a href="https://twitter.com/intent/tweet?url=/project/&amp;text=Display%20Jupyter%20Notebooks%20with%20Academic" target="_blank" rel="noopener" class="share-btn-twitter">
+          <i class="fab fa-twitter"></i>
+        </a>
+      </li>
     
-    
-    
-    <div>
-      <h2><a href="/project/internal-project/" >Internal Project</a></h2>
-      <div class="article-style">
+      
+      
+      
         
-          An example of using the in-built project page.
+      
+      
+      
+      <li>
+        <a href="https://www.facebook.com/sharer.php?u=/project/&amp;t=Display%20Jupyter%20Notebooks%20with%20Academic" target="_blank" rel="noopener" class="share-btn-facebook">
+          <i class="fab fa-facebook"></i>
+        </a>
+      </li>
+    
+      
+      
+      
         
-      </div>
-    </div>
-  
-
-  
-
+      
+      
+      
+      <li>
+        <a href="mailto:?subject=Display%20Jupyter%20Notebooks%20with%20Academic&amp;body=/project/" target="_blank" rel="noopener" class="share-btn-email">
+          <i class="fas fa-envelope"></i>
+        </a>
+      </li>
+    
+      
+      
+      
+        
+      
+      
+      
+      <li>
+        <a href="https://www.linkedin.com/shareArticle?url=/project/&amp;title=Display%20Jupyter%20Notebooks%20with%20Academic" target="_blank" rel="noopener" class="share-btn-linkedin">
+          <i class="fab fa-linkedin-in"></i>
+        </a>
+      </li>
+    
+      
+      
+      
+        
+      
+      
+      
+      <li>
+        <a href="whatsapp://send?text=Display%20Jupyter%20Notebooks%20with%20Academic%20/project/" target="_blank" rel="noopener" class="share-btn-whatsapp">
+          <i class="fab fa-whatsapp"></i>
+        </a>
+      </li>
+    
+      
+      
+      
+        
+      
+      
+      
+      <li>
+        <a href="https://service.weibo.com/share/share.php?url=/project/&amp;title=Display%20Jupyter%20Notebooks%20with%20Academic" target="_blank" rel="noopener" class="share-btn-weibo">
+          <i class="fab fa-weibo"></i>
+        </a>
+      </li>
+    
+  </ul>
 </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+</article>
 
       
 

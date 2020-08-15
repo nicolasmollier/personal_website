@@ -10,10 +10,10 @@ education:
   - course: MEng in Artificial Intelligence
     institution: Massachusetts Institute of Technology
     year: 2009
-  - course: BSc in Artificial Intelligence
-    institution: Massachusetts Institute of Technology
-    year: 2008
-email: "nicolas.mollier@gmx.de"
+  - course: BSc in Wirtschaftswissenschaften
+    institution: Goethe-Universität Frankfurt
+    year: 2020
+email: nicolas.mollier@gmx.de
 interests:
 - Artificial Intelligence
 - Computational Linguistics
@@ -21,7 +21,7 @@ interests:
 organizations:
 - name: Eberhard Karls Universität Tübingen
   url: ""
-role: Professor of Artificial Intelligence
+role: Student 
 social:
 - icon: envelope
   icon_pack: fas
@@ -36,7 +36,7 @@ social:
   icon_pack: fab
   link: https://github.com/gcushen
 superuser: true
-title: Nelson Bighetti
+title: Nicolas Mollier
 user_groups:
 - Researchers
 - Visitors
