@@ -1,6 +1,6 @@
 ---
 header:
-  caption: ""
+  caption: "gelesene Bücher"
   image: ""
 layout: docs
 title: Bücher
