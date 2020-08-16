@@ -1,8 +1,43 @@
 ---
+title: Buchempfehlungen
+summary: Here we describe how to add a page to your site.
+date: "2018-06-28T00:00:00Z"
+
+reading_time: false  # Show estimated reading time?
+share: false  # Show social sharing links?
+profile: false  # Show author profile?
+comments: false  # Show comments?
+
+# Optional header image (relative to `static/img/` folder).
 header:
-  caption: "gelesene Bücher"
+  caption: ""
   image: ""
-layout: docs
-title: Bücher
 ---
+
+## R
+- [WICKHAM, Hadley; GROLEMUND, Garrett. R for data science: import, tidy, transform, visualize, and model data. " O'Reilly Media, Inc.", 2016.](https://www.amazon.de/R-Data-Science-Hadley-Wickham/dp/1491910399/ref=sr_1_1?__mk_de_DE=%C3%85M%C3%85%C5%BD%C3%95%C3%91&crid=2X119DOXJ8QG5&dchild=1&keywords=r+for+data+science&qid=1597574245&sprefix=r+for+da%2Caps%2C232&sr=8-1)
+    
+        
+- [CHAPMAN, Chris; FEIT, Elea McDonnell. R for marketing research and analytics. New York, NY: Springer, 2015.](https://www.amazon.de/Marketing-Research-Analytics-Use/dp/3030143155/ref=sr_1_2?__mk_de_DE=%C3%85M%C3%85%C5%BD%C3%95%C3%91&dchild=1&keywords=r+for+marketing&qid=1597574526&sr=8-2)
+
+- [JAMES, Gareth, et al. An introduction to statistical learning. New York: springer, 2013.](https://www.amazon.de/Introduction-Statistical-Learning-Applications-Statistics-ebook/dp/B01IBM7790/ref=sr_1_1?__mk_de_DE=%C3%85M%C3%85%C5%BD%C3%95%C3%91&crid=1RC4WXOYMQAZJ&dchild=1&keywords=introduction+to+statistical+learning&qid=1597581110&sprefix=introduction+to+%2Caps%2C169&sr=8-1)
+
+- [KRISPIN, Rami. Hands-On Time Series Analysis with R: Perform time series analysis and forecasting using R. Packt, 2019.](https://www.amazon.de/Hands-Time-Analysis-forecasting-visualization-ebook/dp/B07B41P2HZ)
+
+- [WOLLSCHLÄGER, Daniel. R kompakt: Der schnelle Einstieg in die Datenanalyse. Springer-Verlag, 2016.](https://www.amazon.de/kompakt-schnelle-Einstieg-Datenanalyse-Springer-Lehrbuch/dp/366249101X/ref=sr_1_1?__mk_de_DE=%C3%85M%C3%85%C5%BD%C3%95%C3%91&dchild=1&keywords=R+kompakt&qid=1597581465&sr=8-1)
+
+
+
+## Python
+
+- [VanderPlas, Jake. A Whirlwind Tour of Python, " O'Reilly Media, Inc.", 2016.](https://jakevdp.github.io/WhirlwindTourOfPython/)
+
+- [DOWNEY, Allen. Think Python. " O'Reilly Media, Inc.", 2015.](https://www.amazon.de/Think-Python-Like-Computer-Scientist/dp/1491939362/ref=sr_1_1?__mk_de_DE=%C3%85M%C3%85%C5%BD%C3%95%C3%91&dchild=1&keywords=think+python&qid=1597581669&sr=8-1)
+
+
+## SQL
+
+- [LAUBE, Michael. Einstieg in SQL. Rheinwerk, 2019.](https://www.amazon.de/Einstieg-SQL-Datenbanksysteme-PostgreSQL-Vorkenntnisse/dp/3836270706/ref=sr_1_1?__mk_de_DE=%C3%85M%C3%85%C5%BD%C3%95%C3%91&dchild=1&keywords=einstieg+in+sql&qid=1597582257&sr=8-1)
+
+
 
