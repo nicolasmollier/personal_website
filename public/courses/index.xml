@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes" ?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Courses | Nicolas Mollier</title>
+    <title>Bücher | Nicolas Mollier</title>
     <link>/courses/</link>
       <atom:link href="/courses/index.xml" rel="self" type="application/rss+xml" />
-    <description>Courses</description>
+    <description>Bücher</description>
     <generator>Source Themes Academic (https://sourcethemes.com/academic/)</generator><language>de</language><lastBuildDate>Sun, 05 May 2019 00:00:00 +0100</lastBuildDate>
     <image>
-      <url>/images/icon_hu0b7a4cb9992c9ac0e91bd28ffd38dd00_9727_512x512_fill_lanczos_center_2.png</url>
-      <title>Courses</title>
+      <url>/images/icon_hubb2c620e44f44b05f57a49afd6fd01f1_2551_512x512_fill_lanczos_center_2.png</url>
+      <title>Bücher</title>
       <link>/courses/</link>
     </image>
     
