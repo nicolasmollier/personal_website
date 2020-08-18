@@ -1,0 +1,40 @@
+---
+title: Kaggle Titanic ML Competition
+author: Nicolas Mollier
+date: '2020-08-18'
+slug: kaggle-titanic-ml-competition
+categories: []
+tags: []
+subtitle: ''
+summary: ''
+authors: []
+lastmod: '2020-08-18T11:10:05+02:00'
+featured: no
+image:
+  caption: ''
+  focal_point: ''
+  preview_only: no
+projects: []
+---
+
+  
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r Packages, include = TRUE}
+library(tidyverse)
+```
+
+
+## Load the Data
+
+```{r Load the Data, results = 'markup'}
+titanic_train <- read.csv(file = "train.csv", header = TRUE)
+head(titanic_train) %>% knitr::kable()
+titanic_test <- read.csv(file = "test.csv", header = TRUE)
+
+```
+
+
