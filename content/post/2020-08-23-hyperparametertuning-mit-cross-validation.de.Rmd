@@ -33,11 +33,6 @@ library(caret)
 library(gbm)
 library(scales)
 library(e1071)
-library(modelr)
-library(plotROC)
-library(randomForest)
-library(boot)
-library(mice)
 ```
 
 
