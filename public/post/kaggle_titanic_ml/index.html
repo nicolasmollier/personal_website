@@ -1,0 +1,1336 @@
+<!DOCTYPE html><html lang="de" >
+
+<head>
+
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="generator" content="Source Themes Academic 4.8.0">
+
+  
+
+  
+  
+
+  
+  
+  
+  
+  
+    
+    
+    
+  
+  
+
+  <meta name="author" content="Nicolas Mollier">
+
+  
+  
+  
+    
+  
+  <meta name="description" content="Packages library(tidyverse) library(knitr) library(kableExtra) library(mice) library(caret) library(modelr) library(plotROC) library(randomForest) library(boot)  Custom Kable Function custom_kable &lt;- function(data, fontsize = 12, fullwidth = FALSE){ knitr::kable(data) %&gt;% kable_styling(font_size = fontsize, full_width = fullwidth) }  Load the Data Im ersten Schritt laden wir den Trainingsdatensatz und den Testdatensatz, nachdem wir beide unter https://www.">
+
+  
+  <link rel="alternate" hreflang="de" href="/post/kaggle_titanic_ml/">
+
+  
+
+
+  
+  
+  
+  <meta name="theme-color" content="#2962ff">
+  
+
+  
+  
+
+  
+  
+  
+  
+    
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.14.0/css/all.min.css" integrity="sha256-FMvZuGapsJLjouA6k7Eo2lusoAX9i0ShlWFG6qt7SLc=" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.css" integrity="sha256-Vzbj7sDDS/woiFS3uNKo8eIuni59rjyNGtXfstRzStA=" crossorigin="anonymous">
+
+    
+    
+    
+      
+    
+    
+      
+      
+        
+          <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.2/styles/github.min.css" crossorigin="anonymous" title="hl-light">
+          <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.2/styles/dracula.min.css" crossorigin="anonymous" title="hl-dark" disabled>
+        
+      
+    
+
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.5.1/leaflet.css" integrity="sha256-SHMGCYmST46SoyGgo4YR/9AlK1vf3ff84Aq9yK4hdqM=" crossorigin="anonymous">
+    
+
+    
+
+    
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/lazysizes/5.1.2/lazysizes.min.js" integrity="sha256-Md1qLToewPeKjfAHU1zyPwOutccPAm5tahnaw7Osw0A=" crossorigin="anonymous" async></script>
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+        
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+
+  
+
+  
+  
+  
+    
+      
+      
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Montserrat:400,700%7CRoboto:400,400italic,700%7CRoboto+Mono&display=swap">
+    
+  
+
+  
+  
+  
+  
+  <link rel="stylesheet" href="/css/academic.css">
+
+  
+
+
+
+
+  
+
+
+  
+  
+
+  
+
+  <link rel="manifest" href="/index.webmanifest">
+  <link rel="icon" type="image/png" href="/images/icon_hubb2c620e44f44b05f57a49afd6fd01f1_2551_32x32_fill_lanczos_center_2.png">
+  <link rel="apple-touch-icon" type="image/png" href="/images/icon_hubb2c620e44f44b05f57a49afd6fd01f1_2551_192x192_fill_lanczos_center_2.png">
+
+  <link rel="canonical" href="/post/kaggle_titanic_ml/">
+
+  
+  
+  
+  
+  
+  
+  
+    
+    
+  
+  
+  <meta property="twitter:card" content="summary">
+  
+  <meta property="og:site_name" content="Nicolas Mollier">
+  <meta property="og:url" content="/post/kaggle_titanic_ml/">
+  <meta property="og:title" content="Kaggle_Titanic_ML | Nicolas Mollier">
+  <meta property="og:description" content="Packages library(tidyverse) library(knitr) library(kableExtra) library(mice) library(caret) library(modelr) library(plotROC) library(randomForest) library(boot)  Custom Kable Function custom_kable &lt;- function(data, fontsize = 12, fullwidth = FALSE){ knitr::kable(data) %&gt;% kable_styling(font_size = fontsize, full_width = fullwidth) }  Load the Data Im ersten Schritt laden wir den Trainingsdatensatz und den Testdatensatz, nachdem wir beide unter https://www."><meta property="og:image" content="/images/icon_hubb2c620e44f44b05f57a49afd6fd01f1_2551_512x512_fill_lanczos_center_2.png">
+  <meta property="twitter:image" content="/images/icon_hubb2c620e44f44b05f57a49afd6fd01f1_2551_512x512_fill_lanczos_center_2.png"><meta property="og:locale" content="de">
+  
+    
+    
+  
+
+  
+
+
+    
+
+
+
+
+
+
+  
+
+
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "/post/kaggle_titanic_ml/"
+  },
+  "headline": "Kaggle_Titanic_ML",
+  
+  "datePublished": "0001-01-01T00:00:00Z",
+  "dateModified": "0001-01-01T00:00:00Z",
+  
+  "author": {
+    "@type": "Person",
+    "name": "Nicolas Mollier"
+  },
+  
+  "publisher": {
+    "@type": "Organization",
+    "name": "Nicolas Mollier",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "/images/icon_hubb2c620e44f44b05f57a49afd6fd01f1_2551_192x192_fill_lanczos_center_2.png"
+    }
+  },
+  "description": "Packages library(tidyverse) library(knitr) library(kableExtra) library(mice) library(caret) library(modelr) library(plotROC) library(randomForest) library(boot)  Custom Kable Function custom_kable \u0026lt;- function(data, fontsize = 12, fullwidth = FALSE){ knitr::kable(data) %\u0026gt;% kable_styling(font_size = fontsize, full_width = fullwidth) }  Load the Data Im ersten Schritt laden wir den Trainingsdatensatz und den Testdatensatz, nachdem wir beide unter https://www."
+}
+</script>
+
+  
+
+  
+
+
+  
+
+
+  
+
+
+
+
+
+  <title>Kaggle_Titanic_ML | Nicolas Mollier</title>
+
+</head>
+
+
+<body id="top" data-spy="scroll" data-offset="70" data-target="#TableOfContents" class=" ">
+
+  <aside class="search-results" id="search">
+  <div class="container">
+    <section class="search-header">
+
+      <div class="row no-gutters justify-content-between mb-3">
+        <div class="col-6">
+          <h1>Suche</h1>
+        </div>
+        <div class="col-6 col-search-close">
+          <a class="js-search" href="#"><i class="fas fa-times-circle text-muted" aria-hidden="true"></i></a>
+        </div>
+      </div>
+
+      <div id="search-box">
+        
+        <input name="q" id="search-query" placeholder="Suche..." autocapitalize="off"
+        autocomplete="off" autocorrect="off" spellcheck="false" type="search" class="form-control">
+        
+      </div>
+
+    </section>
+    <section class="section-search-results">
+
+      <div id="search-hits">
+        
+      </div>
+
+    </section>
+  </div>
+</aside>
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+<nav class="navbar navbar-expand-lg navbar-light compensate-for-scrollbar" id="navbar-main">
+  <div class="container">
+
+    
+    <div class="d-none d-lg-inline-flex">
+      <a class="navbar-brand" href="/">Nicolas Mollier</a>
+    </div>
+    
+
+    
+    <button type="button" class="navbar-toggler" data-toggle="collapse"
+            data-target="#navbar-content" aria-controls="navbar" aria-expanded="false" aria-label="Navigation einblenden">
+    <span><i class="fas fa-bars"></i></span>
+    </button>
+    
+
+    
+    <div class="navbar-brand-mobile-wrapper d-inline-flex d-lg-none">
+      <a class="navbar-brand" href="/">Nicolas Mollier</a>
+    </div>
+    
+
+    
+    
+    <div class="navbar-collapse main-menu-item collapse justify-content-start" id="navbar-content">
+
+      
+      <ul class="navbar-nav d-md-inline-flex">
+        
+
+        
+
+        
+        
+        
+          
+        
+
+        
+        
+        
+        
+        
+        
+          
+          
+          
+            
+          
+          
+        
+
+        <li class="nav-item">
+          <a class="nav-link " href="/#projects"><span>Projekte</span></a>
+        </li>
+
+        
+        
+
+        
+
+        
+        
+        
+          
+        
+
+        
+        
+        
+        
+        
+        
+          
+          
+          
+            
+          
+          
+        
+
+        <li class="nav-item">
+          <a class="nav-link " href="/#posts"><span>Blog</span></a>
+        </li>
+
+        
+        
+
+        
+
+        
+        
+        
+          
+        
+
+        
+        
+        
+        
+        
+        
+
+        <li class="nav-item">
+          <a class="nav-link " href="/courses/"><span>Bücher</span></a>
+        </li>
+
+        
+        
+
+        
+
+        
+        
+        
+          
+        
+
+        
+        
+        
+        
+        
+        
+          
+          
+          
+            
+          
+          
+        
+
+        <li class="nav-item">
+          <a class="nav-link " href="/#contact"><span>Kontakt</span></a>
+        </li>
+
+        
+        
+
+        
+
+        
+        
+        
+          
+        
+
+        
+        
+        
+        
+        
+        
+
+        <li class="nav-item">
+          <a class="nav-link " href="/files/cv.pdf"><span>Lebenslauf</span></a>
+        </li>
+
+        
+        
+
+      
+
+        
+      </ul>
+    </div>
+
+    <ul class="nav-icons navbar-nav flex-row ml-auto d-flex pl-md-2">
+      
+      <li class="nav-item">
+        <a class="nav-link js-search" href="#" aria-label="Suche"><i class="fas fa-search" aria-hidden="true"></i></a>
+      </li>
+      
+
+      
+
+      
+
+    </ul>
+
+  </div>
+</nav>
+
+
+
+  <article class="article">
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+  
+  
+<div class="article-container pt-3">
+  <h1>Kaggle_Titanic_ML</h1>
+
+  
+
+  
+    
+
+
+<div class="article-metadata">
+
+  
+  
+
+  
+  <span class="article-date">
+    
+    
+      
+    
+    Jan 1, 0001
+  </span>
+  
+
+  
+
+  
+  <span class="middot-divider"></span>
+  <span class="article-reading-time">
+    6 min Lesezeit
+  </span>
+  
+
+  
+  
+  
+
+  
+  
+
+</div>
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+</div>
+
+
+
+  <div class="article-container">
+
+    <div class="article-style">
+      
+
+
+<div id="packages" class="section level2">
+<h2>Packages</h2>
+<pre class="r"><code>library(tidyverse)
+library(knitr)
+library(kableExtra)
+library(mice)
+library(caret)
+library(modelr)
+library(plotROC)
+library(randomForest)
+library(boot)</code></pre>
+</div>
+<div id="custom-kable-function" class="section level2">
+<h2>Custom Kable Function</h2>
+<pre class="r"><code>custom_kable &lt;- function(data, fontsize = 12, fullwidth = FALSE){
+  knitr::kable(data) %&gt;% 
+    kable_styling(font_size = fontsize, full_width = fullwidth)
+}</code></pre>
+</div>
+<div id="load-the-data" class="section level2">
+<h2>Load the Data</h2>
+<p>Im ersten Schritt laden wir den Trainingsdatensatz und den Testdatensatz, nachdem wir beide unter <a href="https://www.kaggle.com/c/titanic/data" class="uri">https://www.kaggle.com/c/titanic/data</a> heruntergeladen haben. Anschließend verknüpfe ich den Trainings- und Testdatensatz zu einem Datensatz, um das Pre-Processing für beide gleichzeitig durchführen kann. Dazu ist es notwendig, die Observationen der Trainingsdaten als solche kenntlich zu machen und bei den Testdaten die Variable <em>Survived</em> zu ergänzen, welche in jeder der Testobservationen den Wert NA enthält.</p>
+<pre class="r"><code>titanic_train &lt;- read.csv(file = &quot;train.csv&quot;, 
+                          header = TRUE,
+                          stringsAsFactors = FALSE)
+titanic_test &lt;- read.csv(file = &quot;test.csv&quot;, 
+                         header = TRUE,
+                         stringsAsFactors = FALSE)
+
+titanic_train$IsTrain &lt;- rep(TRUE, nrow(titanic_train))
+titanic_test$IsTrain &lt;- rep(FALSE, nrow(titanic_test))
+titanic_test$Survived &lt;- rep(NA, nrow(titanic_test))
+
+titanic &lt;- rbind(titanic_train, titanic_test)</code></pre>
+</div>
+<div id="data-inspection" class="section level2">
+<h2>Data Inspection</h2>
+<pre class="r"><code>glimpse(titanic)
+head(titanic) %&gt;% custom_kable()
+summary(titanic) </code></pre>
+<p>Unter den Prädiktorvariablen enthalten <em>Age</em> und <em>Fare</em> und <em>Cabin</em> fehlende Werte. Die Variable <em>Age</em> enthält 263 fehlende Werte. Bei der Variablen <em>Fare</em> fehlt lediglich bei einer Observation ein Wert. <em>Cabin</em> hat 1014 Missings und <em>Embarked</em> weist 2 Missings auf.</p>
+<pre class="r"><code>titanic %&gt;% 
+  count(Name) %&gt;% 
+  filter(n &gt; 1) %&gt;% 
+  custom_kable()</code></pre>
+<p>Zwei Namen tauchen doppelt auf: Connolly, Miss. Kate und Kelly, Mr. James.</p>
+</div>
+<div id="pre-processing-umgang-mit-missings" class="section level2">
+<h2>Pre-Processing: Umgang mit Missings</h2>
+<p>Sowohl bei <em>Age</em> als auch bei <em>Fare</em> wurden die fehlenden Werte durch den Median der jeweiligen Variablen ersetzt. Zusätzlich wurde eine neue Variable <em>age_missing</em> kreiert, die anzeigt, ob die entsprechende Observation einen fehlenden Wert in der Variable <em>Age</em> aufweist. Für die Variable <em>Cabin</em> wurde eine neue Faktorstufe für die 1014 fehlenden Werte geschaffen. Observationen mit Missings in Variable <em>Embarked</em> werden entfernt, da lediglich zwei Observationen Missings in dieser Variable aufweisen. Würde man an dieser Stelle wie bei <em>Cabin</em> eine neue Faktorstufe (Missing) erzeugen, würde dies später in der Modellierung zu Problemen führen, falls nicht sowohl der Datensatz an dem das Modell trainiert wird als auch der Datensatz, an dem das Modell validiert wird, eine der zwei Observationen mit Ausprägung (Missing) enthalten. Da an späterer Stelle auch Cross-Validation eingesetzt wird, wäre es sehr wahrscheinlich, dass es zu der Situation käme, in der im Testdatensatz Faktorstufen auftauchen, die im Trainingsdatensatz nicht vorkamen.</p>
+<pre class="r"><code>titanic %&gt;% 
+  mutate(age_missing = is.na(Age)) %&gt;% 
+  group_by(age_missing) %&gt;% 
+  summarize(surival_rate = mean(Survived, na.rm = T)) 
+
+titanic &lt;- titanic %&gt;% 
+  mutate(age_missing = is.na(Age))
+
+titanic$Age[is.na(titanic$Age)] &lt;- median(titanic$Age, na.rm = TRUE)
+
+titanic$Fare[is.na(titanic$Fare)] &lt;- median(titanic$Fare, na.rm = TRUE)
+
+titanic$Cabin[titanic$Cabin == &#39;&#39;] &lt;- NA
+titanic$Cabin &lt;- fct_explicit_na(titanic$Cabin)
+
+# titanic$Embarked[titanic$Embarked == &#39;&#39;] &lt;- NA
+# titanic$Embarked &lt;- fct_explicit_na(titanic$Embarked)
+
+titanic &lt;- titanic %&gt;% 
+  filter(!(Embarked == &#39;&#39;))  </code></pre>
+<pre class="r"><code>titanic$PassengerId &lt;- factor(titanic$PassengerId)
+titanic$Survived &lt;- factor(titanic$Survived)
+titanic$Pclass &lt;- factor(titanic$Pclass)
+titanic$Sex &lt;- factor(titanic$Sex)
+titanic$Embarked &lt;- factor(titanic$Embarked)</code></pre>
+</div>
+<div id="modellierung" class="section level2">
+<h2>Modellierung</h2>
+<pre class="r"><code>titanic_train &lt;- titanic %&gt;% 
+  filter(IsTrain) %&gt;% 
+  select(-PassengerId, -IsTrain, -Name, -Ticket, -Cabin)
+
+titanic_test &lt;- titanic %&gt;% 
+  filter(!IsTrain) %&gt;%
+  select(-PassengerId, -IsTrain, -Survived, -Name, -Ticket, -Cabin)</code></pre>
+<pre class="r"><code>set.seed(1234)
+train_index &lt;- caret::createDataPartition(titanic_train$Survived, 
+                                          p = 0.7,
+                                          list = FALSE)
+titanic_train_2 &lt;- titanic_train[train_index,]
+titanic_valid &lt;- titanic_train[-train_index,]</code></pre>
+<pre class="r"><code>cv_accuracy &lt;- data.frame(lr = c(NA))</code></pre>
+<div id="logistische-regression" class="section level3">
+<h3>logistische Regression</h3>
+<pre class="r"><code>log_reg &lt;- glm(Survived ~ ., 
+               data = titanic_train_2, 
+               family = &quot;binomial&quot;)
+pred_log_reg &lt;- predict(log_reg, 
+                        newdata = titanic_valid, 
+                        type = &quot;response&quot;)
+titanic_valid %&gt;% 
+  add_predictions(log_reg, type = &quot;response&quot;) %&gt;% 
+  ggplot(aes(d = as.numeric(Survived), m = pred)) +
+  geom_roc()</code></pre>
+<pre><code>## Warning in verify_d(data$d): D not labeled 0/1, assuming 1 = 0 and 2 = 1!</code></pre>
+<p><img src="/post/Kaggle_Titanic_ML_files/figure-html/logistische%20Regression:%20cut-off%200.5-1.png" width="672" /></p>
+<pre class="r"><code>pred_log_reg_binary &lt;- ifelse(pred_log_reg &gt; 0.5, 1, 0) %&gt;% factor(levels = c(0, 1))
+caret::confusionMatrix(data = pred_log_reg_binary, 
+                       reference = titanic_valid$Survived, 
+                       positive = &quot;1&quot;)</code></pre>
+<pre class="r"><code>set.seed(1234)
+k &lt;- 5
+n_cut_points &lt;- 21
+cut_points &lt;- seq(0, 1, length.out = n_cut_points)
+log_reg_accuracy &lt;- matrix(NA, 
+                           nrow = k, 
+                           ncol = n_cut_points)
+
+folds &lt;- sample(1:k, 
+                size = nrow(titanic_train_2), 
+                replace = TRUE)
+
+for(j in seq_along(cut_points)){
+  cut_off &lt;- cut_points[j]  
+  for(i in 1:k){
+    df_train &lt;- titanic_train_2[folds != i,]
+    df_test &lt;- titanic_train_2[folds == i,]
+    mod &lt;- glm(Survived ~ .,
+                 data = df_train, 
+                 family = &quot;binomial&quot;)
+    pred &lt;- predict(mod, 
+                      newdata = df_test, 
+                      type = &quot;response&quot;)
+    pred_binary &lt;- ifelse(pred &gt; cut_off, 1, 0) %&gt;% factor(levels = c(0, 1))
+    conf_matrix &lt;- caret::confusionMatrix(data = pred_binary, 
+                                            reference = df_test$Survived)
+    log_reg_accuracy[i, j] &lt;- conf_matrix$overall[&quot;Accuracy&quot;]
+  }
+}
+
+
+
+
+accuracy_mean &lt;- colMeans(log_reg_accuracy)
+cut_off_best_lr &lt;- cut_points[which.max(accuracy_mean)]</code></pre>
+<pre class="r"><code>log_reg_final &lt;- glm(Survived ~ ., 
+                     data = titanic_train_2, 
+                     family = &quot;binomial&quot;)
+pred_log_reg_final &lt;- predict(log_reg_final, 
+                              newdata = titanic_valid,
+                              type = &quot;response&quot;)
+pred_log_reg_final_binary &lt;- ifelse(pred_log_reg_final &gt; cut_off_best_lr, 1, 0) %&gt;% factor(levels = c(0, 1))
+caret::confusionMatrix(data = pred_log_reg_final_binary,
+                       reference = titanic_valid$Survived,
+                       positive = &quot;1&quot;) </code></pre>
+<pre class="r"><code>set.seed(1234)
+k &lt;- 5
+folds &lt;- sample(1:k, 
+                size = nrow(titanic_train), 
+                replace = TRUE)
+cv_accuracy_lr &lt;- vector(mode = &quot;numeric&quot;, 
+                         length = k)
+for(i in 1:k){
+  df_train &lt;- titanic_train[i != folds,]
+  df_test &lt;- titanic_train[i == folds,]
+  fit &lt;- glm(Survived ~ .,
+             data = df_train,
+             family = &quot;binomial&quot;)
+  pred &lt;- predict(fit, 
+                  newdata = df_test,
+                  type = &quot;response&quot;)
+  pred_binary &lt;- ifelse(pred &gt; cut_off_best_lr, 1, 0) %&gt;% factor(levels = c(0, 1))
+  conf_matrix &lt;- caret::confusionMatrix(data = pred_binary,
+                                        reference = df_test$Survived,
+                                        positive = &quot;1&quot;)
+  cv_accuracy_lr[i] &lt;- conf_matrix$overall[&quot;Accuracy&quot;]
+  mean_cv_accuracy_lr &lt;- mean(cv_accuracy_lr)
+}
+
+cv_accuracy$lr &lt;- mean_cv_accuracy_lr</code></pre>
+<pre class="r"><code>mod_lr &lt;- glm(Survived ~ .,
+              data = titanic_train,
+              family = &quot;binomial&quot;)
+pred_lr &lt;- predict(mod_lr, 
+                   newdata = titanic_test,
+                   type = &quot;response&quot;)
+pred_lr_binary &lt;- ifelse(pred_lr &gt; cut_off_best_lr, 1, 0)</code></pre>
+</div>
+<div id="bagging" class="section level3">
+<h3>Bagging</h3>
+<pre class="r"><code>k = 5
+folds &lt;- sample(1:k, 
+                size = nrow(titanic_train_2), 
+                replace = TRUE)
+n_tree_seq &lt;- seq(100, 2000, 200)
+cut_points &lt;- seq(0.3, 0.75, by = 0.05)
+ntree_cut_comb &lt;- expand_grid(ntree = n_tree_seq, 
+                              cut_point = cut_points)
+bagging_accuracy &lt;- matrix(NA,
+                           nrow = k,
+                           ncol = nrow(ntree_cut_comb))
+
+for(i in 1:k){
+  df_train &lt;- titanic_train_2[i != folds,]
+  df_test &lt;- titanic_train_2[i == folds,]
+  for(j in 1:(nrow(ntree_cut_comb))){
+    ntree &lt;- ntree_cut_comb[j,&quot;ntree&quot;] %&gt;% as_vector()
+    cut_point &lt;- ntree_cut_comb[j, &quot;cut_point&quot;] %&gt;% as_vector()
+    fit &lt;- randomForest(Survived ~ .,
+                       data = df_train,
+                       mtry = ncol(titanic_test),
+                       ntree = ntree)
+    pred &lt;- predict(fit,
+                    newdata = df_test,
+                    type = &quot;prob&quot;)
+    pred_binary &lt;- ifelse(pred[,2] &gt; cut_point, 1, 0) %&gt;% factor(levels = c(0,1))
+    conf_matrix &lt;- caret::confusionMatrix(data = pred_binary,
+                                          reference = df_test$Survived,
+                                          positive = &quot;1&quot;)
+    bagging_accuracy[i,j] &lt;- conf_matrix$overall[&quot;Accuracy&quot;]
+  }
+}
+
+accuracy_mean &lt;- colMeans(bagging_accuracy)
+best_comb &lt;- ntree_cut_comb[which.max(accuracy_mean),]
+
+ntree_cut_comb %&gt;% 
+  mutate(accuracy = accuracy_mean) %&gt;% 
+  gather(key = &quot;key&quot;, value = &quot;value&quot;, ntree, cut_point) %&gt;% 
+  ggplot(aes(value, accuracy)) +
+  geom_point() +
+  geom_smooth(se = F) +
+  facet_wrap(~key, scales = &quot;free_x&quot;)</code></pre>
+<p><img src="/post/Kaggle_Titanic_ML_files/figure-html/Baggin:%20Prametertuning%20(n.tree%20und%20cut_point)%20mit%20CV-1.png" width="672" /></p>
+<pre class="r"><code># rf &lt;- randomForest(Survived ~ .,
+#                    data = titanic_train_2,
+#                    mtry = ncol(titanic_test),
+#                    ntree = 100)</code></pre>
+<pre class="r"><code>set.seed(1234)
+k &lt;- 5
+folds &lt;- sample(1:k, 
+                size = nrow(titanic_train), 
+                replace = TRUE)
+cv_accuracy_bagging &lt;- vector(mode = &quot;numeric&quot;, 
+                         length = k)
+
+for(i in 1:k){
+  df_train &lt;- titanic_train[i != folds,]
+  df_test &lt;- titanic_train[i == folds,]
+  fit &lt;- randomForest(Survived ~ .,
+                      data = df_train,
+                      mtry = ncol(titanic_test),
+                      ntree = best_comb$ntree)
+  pred &lt;- predict(fit, 
+                  newdata = df_test,
+                  type = &quot;prob&quot;)
+  pred_binary &lt;- ifelse(pred[,2] &gt; best_comb$cut_point, 1, 0) %&gt;% factor(levels = c(0, 1))
+  conf_matrix &lt;- caret::confusionMatrix(data = pred_binary,
+                                        reference = df_test$Survived,
+                                        positive = &quot;1&quot;)
+  cv_accuracy_bagging[i] &lt;- conf_matrix$overall[&quot;Accuracy&quot;]
+  mean_cv_accuracy_bagging &lt;- mean(cv_accuracy_bagging)
+}
+
+cv_accuracy$bagging &lt;- mean_cv_accuracy_bagging</code></pre>
+<pre class="r"><code>mod_bagging &lt;- randomForest(Survived ~ .,
+                            data = titanic_train,
+                            mtry = ncol(titanic_test),
+                            ntree = best_comb$ntree)
+pred_bagging &lt;- predict(mod_bagging,
+                        newdata = titanic_test,
+                        type = &quot;prob&quot;)
+pred_bagging_binary &lt;- ifelse(pred_bagging[,2] &gt; best_comb$cut_point, 1, 0) </code></pre>
+</div>
+</div>
+
+    </div>
+
+    
+
+
+
+
+
+
+
+
+<div class="share-box" aria-hidden="true">
+  <ul class="share">
+    
+      
+      
+      
+        
+      
+      
+      
+      <li>
+        <a href="https://twitter.com/intent/tweet?url=/post/kaggle_titanic_ml/&amp;text=Kaggle_Titanic_ML" target="_blank" rel="noopener" class="share-btn-twitter">
+          <i class="fab fa-twitter"></i>
+        </a>
+      </li>
+    
+      
+      
+      
+        
+      
+      
+      
+      <li>
+        <a href="https://www.facebook.com/sharer.php?u=/post/kaggle_titanic_ml/&amp;t=Kaggle_Titanic_ML" target="_blank" rel="noopener" class="share-btn-facebook">
+          <i class="fab fa-facebook"></i>
+        </a>
+      </li>
+    
+      
+      
+      
+        
+      
+      
+      
+      <li>
+        <a href="mailto:?subject=Kaggle_Titanic_ML&amp;body=/post/kaggle_titanic_ml/" target="_blank" rel="noopener" class="share-btn-email">
+          <i class="fas fa-envelope"></i>
+        </a>
+      </li>
+    
+      
+      
+      
+        
+      
+      
+      
+      <li>
+        <a href="https://www.linkedin.com/shareArticle?url=/post/kaggle_titanic_ml/&amp;title=Kaggle_Titanic_ML" target="_blank" rel="noopener" class="share-btn-linkedin">
+          <i class="fab fa-linkedin-in"></i>
+        </a>
+      </li>
+    
+      
+      
+      
+        
+      
+      
+      
+      <li>
+        <a href="whatsapp://send?text=Kaggle_Titanic_ML%20/post/kaggle_titanic_ml/" target="_blank" rel="noopener" class="share-btn-whatsapp">
+          <i class="fab fa-whatsapp"></i>
+        </a>
+      </li>
+    
+      
+      
+      
+        
+      
+      
+      
+      <li>
+        <a href="https://service.weibo.com/share/share.php?url=/post/kaggle_titanic_ml/&amp;title=Kaggle_Titanic_ML" target="_blank" rel="noopener" class="share-btn-weibo">
+          <i class="fab fa-weibo"></i>
+        </a>
+      </li>
+    
+  </ul>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+  
+    
+    
+    
+      
+    
+    
+    
+    <div class="media author-card content-widget-hr">
+      
+        
+        <img class="avatar mr-3 avatar-circle" src="/author/nicolas-mollier/avatar_hua96a9129eb40319c6af4aa5dcdac3568_168993_270x270_fill_q90_lanczos_center.jpg" alt="Nicolas Mollier">
+      
+
+      <div class="media-body">
+        <h5 class="card-title"><a href="/">Nicolas Mollier</a></h5>
+        <h6 class="card-subtitle">Master Student in Data Science</h6>
+        <p class="card-text">My research interests include distributed robotics, mobile computing and programmable matter.</p>
+        <ul class="network-icon" aria-hidden="true">
+  
+    
+    
+    
+      
+    
+    
+    
+    
+    
+      
+    
+    <li>
+      <a href="/#contact" >
+        <i class="fas fa-envelope"></i>
+      </a>
+    </li>
+  
+    
+    
+    
+    
+    
+    
+    
+      
+    
+    <li>
+      <a href="https://scholar.google.co.uk/citations?user=sIwtMXoAAAAJ" target="_blank" rel="noopener">
+        <i class="ai ai-google-scholar"></i>
+      </a>
+    </li>
+  
+    
+    
+    
+      
+    
+    
+    
+    
+    
+      
+    
+    <li>
+      <a href="https://github.com/nicolasmollier" target="_blank" rel="noopener">
+        <i class="fab fa-github"></i>
+      </a>
+    </li>
+  
+    
+    
+    
+      
+    
+    
+    
+    
+    
+      
+    
+    <li>
+      <a href="https://www.instagram.com/nicolas.mollier/" target="_blank" rel="noopener">
+        <i class="fab fa-instagram"></i>
+      </a>
+    </li>
+  
+</ul>
+
+      </div>
+    </div>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+  </div>
+</article>
+
+      
+
+    
+    
+    
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js" integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=" crossorigin="anonymous"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.imagesloaded/4.1.4/imagesloaded.pkgd.min.js" integrity="sha256-lqvxZrPLtfffUl2G/e7szqSvPBILGbwmsGE1MKlOi0Q=" crossorigin="anonymous"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.isotope/3.0.6/isotope.pkgd.min.js" integrity="sha256-CBrpuqrMhXwcLLUd5tvQ4euBHCdh7wGlDfNz8vbu/iI=" crossorigin="anonymous"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.js" integrity="sha256-yt2kYMy0w8AbtF89WXb2P1rfjcP/HTHLT7097U8Y5b8=" crossorigin="anonymous"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/instant.page/5.1.0/instantpage.min.js" integrity="sha512-1+qUtKoh9XZW7j+6LhRMAyOrgSQKenQ4mluTR+cvxXjP1Z54RxZuzstR/H9kgPXQsVB8IW7DMDFUJpzLjvhGSQ==" crossorigin="anonymous"></script>
+
+      
+
+      
+        
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.2/highlight.min.js" integrity="sha512-7t8APmYpzEsZP7CYoA7RfMPV9Bb+PJHa9x2WiUnDXZx3XHveuyWUtvNOexhkierl5flZ3tr92dP1mMS+SGlD+A==" crossorigin="anonymous"></script>
+        
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.2/languages/r.min.js"></script>
+        
+      
+
+    
+
+    
+    
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.5.1/leaflet.js" integrity="sha256-EErZamuLefUnbMBQbsEqu1USa+btR2oIlCpBJbyD4/g=" crossorigin="anonymous"></script>
+    
+
+    
+    
+    <script>const code_highlighting = true;</script>
+    
+
+    
+    
+    <script>const isSiteThemeDark = false;</script>
+    
+
+    
+    
+    
+    
+    
+    
+    <script>
+      const search_config = {"indexURI":"/index.json","minLength":1,"threshold":0.3};
+      const i18n = {"no_results":"Nichts gefunden","placeholder":"Suche...","results":"Suchergebnisse"};
+      const content_type = {
+        'post': "Blog",
+        'project': "Projekte",
+        'publication' : "Publikationen",
+        'talk' : "Vorträge",
+        'slides' : "Folien"
+        };
+    </script>
+    
+
+    
+    
+
+    
+    
+    <script id="search-hit-fuse-template" type="text/x-template">
+      <div class="search-hit" id="summary-{{key}}">
+      <div class="search-hit-content">
+        <div class="search-hit-name">
+          <a href="{{relpermalink}}">{{title}}</a>
+          <div class="article-metadata search-hit-type">{{type}}</div>
+          <p class="search-hit-description">{{snippet}}</p>
+        </div>
+      </div>
+      </div>
+    </script>
+    
+
+    
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/3.2.1/fuse.min.js" integrity="sha256-VzgmKYmhsGNNN4Ph1kMW+BjoYJM2jV5i4IlFoeZA9XI=" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mark.js/8.11.1/jquery.mark.min.js" integrity="sha256-4HLtjeVgH0eIB3aZ9mLYF6E8oU5chNdjU6p6rrXpl9U=" crossorigin="anonymous"></script>
+    
+
+    
+    
+
+    
+    
+
+    
+    
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+      
+    
+    
+    
+    
+    <script src="/js/academic.min.3b2b658c61ebd725bd5fc606c89fe44c.js"></script>
+
+    
+
+
+
+
+
+
+  
+  
+  <div class="container">
+    <footer class="site-footer">
+  
+  <p class="powered-by">
+    
+      <a href="/privacy/">Privacy Policy</a>
+    
+    
+       &middot; 
+      <a href="/terms/">Terms</a>
+    
+  </p>
+  
+
+  <p class="powered-by">
+    
+  </p>
+
+  
+  
+
+
+
+
+
+
+  <p class="powered-by">
+    
+    Published with
+    <a href="https://sourcethemes.com/academic/" target="_blank" rel="noopener">Academic Website Builder</a>
+    
+
+    
+    <span class="float-right" aria-hidden="true">
+      <a href="#" class="back-to-top">
+        <span class="button_icon">
+          <i class="fas fa-chevron-up fa-2x"></i>
+        </span>
+      </a>
+    </span>
+    
+  </p>
+</footer>
+
+  </div>
+  
+
+  
+<div id="modal" class="modal fade" role="dialog">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Zitieren</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <pre><code class="tex hljs"></code></pre>
+      </div>
+      <div class="modal-footer">
+        <a class="btn btn-outline-primary my-1 js-copy-cite" href="#" target="_blank">
+          <i class="fas fa-copy"></i> Kopie
+        </a>
+        <a class="btn btn-outline-primary my-1 js-download-cite" href="#" target="_blank">
+          <i class="fas fa-download"></i> Download
+        </a>
+        <div id="modal-error"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

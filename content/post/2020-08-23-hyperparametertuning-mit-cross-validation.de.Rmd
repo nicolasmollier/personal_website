@@ -1,0 +1,328 @@
+---
+title: 'Kaggle: Titanic Machine Learning Competition'
+author: Nicolas Mollier
+date: '2020-08-23'
+slug: hyperparametertuning-mit-cross-validation
+categories: []
+tags: []
+subtitle: ''
+summary: ''
+authors: []
+lastmod: '2020-08-23T19:43:03+02:00'
+featured: no
+image:
+  caption: ''
+  focal_point: ''
+  preview_only: no
+projects: []
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, results = 'hide', warning = FALSE)
+```
+
+Eine Analyse für die Teilnahme an der Titanic Machine Learning Competition. In dieser Competition geht es darum, möglichst akkurat vorherzusagen, welche der Passagiere der Titanic überleben und welche nicht. Das Hauptaugenmerk dieser Analyse liegt auf dem Hyperparametertuning per Cross-Validation. Insbesondere wollte ich die Cross Validation durch Schleifen selbst inmplementieren statt z.B. caret bzw tidymodels dafür zu verwenden. Für die Modellierung wurde *Boosting* verwendet. Zwar wurde eine Auswahl aus den zur Verfügung stehenden Prädiktoren getroffen. Eine elaborierte analytische Auswahl der zu verwendenden Prädiktoren und deren Transformation wurden allerdings ausgeklammert. <!-- Für eine Analyse, bei der die Auswahl der richtigen Prädiktoren im Mittelpunkt steht, siehe. Für eine Analyse zum Umgang mit sehr vielen Variablen (Hauptkomponentenanalyse) siehe. -->
+
+## Packages 
+
+```{r Packages, message = FALSE}
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+library(mice)
+library(caret)
+library(modelr)
+library(plotROC)
+library(randomForest)
+library(boot)
+library(gbm)
+library(scales)
+library(e1071)
+```
+
+
+## Load the Data
+
+Im ersten Schritt laden wir den Trainingsdatensatz und den Testdatensatz, nachdem wir beide unter https://www.kaggle.com/c/titanic/data heruntergeladen haben. Anschließend verknüpfe ich den Trainings- und Testdatensatz zu einem Datensatz, um das Pre-Processing für beide gleichzeitig durchführen zu können. Dazu ist es notwendig, die Observationen der Trainingsdaten als solche kenntlich zu machen und bei den Testdaten die Variable *Survived* zu ergänzen, welche in jeder der Testobservationen den Wert NA enthält.
+
+```{r Load the Data, message = F}
+train <- read.csv(file = "train.csv", 
+                          header = TRUE,
+                          stringsAsFactors = FALSE)
+test <- read.csv(file = "test.csv", 
+                         header = TRUE,
+                         stringsAsFactors = FALSE)
+PassengerId_submission <- test$PassengerId
+
+train$IsTrain <- rep(TRUE, nrow(train))
+test$IsTrain <- rep(FALSE, nrow(test))
+test$Survived <- rep(NA, nrow(test))
+
+titanic <- rbind(train, test)
+```
+
+## Data Inspection
+
+Der Datensatz enthält `r ncol(titanic)` Variablen (Die Indikatorvariable *IsTrain* ausgenommen). Für die Prognose der Variablen *Survived* stehen also zunächst 11 Variablen zur Verfügung. Der Testdatensatz umfasst `r nrow(train)` Observationen, der Trainingsdatensatz `r nrow(test)`. 
+
+```{r Data Inspection}
+glimpse(titanic)
+head(titanic) 
+summary(titanic) 
+```
+
+
+```{r number of Missings, include = FALSE}
+n_missings_age <- is.na(titanic$Age) %>% sum()
+n_missings_cabin <- sum(titanic$Cabin == '')
+n_missings_embarked <- sum(titanic$Embarked == '')
+```
+
+Unter den Prädiktorvariablen enthalten *Age*, *Fare*, *Cabin* und *Embarked* fehlende Werte. Die Variable *Age* enthält `r n_missings_age` fehlende Werte. Bei der Variablen *Fare* fehlt lediglich bei einer Observation ein Wert. *Cabin* hat `r n_missings_cabin` Missings und *Embarked* weist `r n_missings_embarked` Missings auf.
+
+
+```{r Namen Duplikate, include=F}
+duplicate_names <- titanic %>% 
+  count(Name) %>% 
+  filter(n > 1) %>%
+  dplyr::select(Name) %>% 
+  as_vector()
+```
+
+Bei der ersten Untersuchung ist mir eine Unstimmigkeit in den Daten aufgefallen. Zwei Namen tauchen doppelt auf: `r duplicate_names[1]` und `r duplicate_names[2]`. Allerdings unterscheiden sich die Ausprägungen der anderen Variablen für die jeweiligen Passagiere mit gleichem Namen. *PassengerID*, *Age* und *Ticketnummer* unterscheiden sich jeweils. Außerdem handelt es sich um nicht unübliche Vor- und Nachnamen, sodass davon auszugehen ist, dass es sich um unterschiedliche Personen gleichen Namens handelt. 
+
+```{r Unstimmigkeiten: Namen Duplikate}
+titanic %>% 
+  count(Name) %>% 
+  filter(n > 1) 
+
+titanic %>% 
+  filter(Name %in% duplicate_names)
+```
+
+
+## Pre-Processing: Umgang mit Missings
+
+Sowohl bei *Age* als auch bei *Fare* wurden die fehlenden Werte durch den Median der jeweiligen Variablen ersetzt. Zusätzlich wurde eine neue Variable *age_missing* kreiert, die anzeigt, ob die entsprechende Observation einen fehlenden Wert in der Variable *Age* aufweist. Für die Variable *Cabin* wurde eine neue Faktorstufe für die `r n_missings_cabin` fehlenden Werte geschaffen. Observationen mit Missings in Variable *Embarked* werden entfernt, da lediglich zwei Observationen Missings in dieser Variable aufweisen. Würde man an dieser Stelle wie bei *Cabin* eine neue Faktorstufe (Missing) erzeugen, würde dies später in der Modellierung zu Problemen führen, falls nicht sowohl der Datensatz an dem das Modell trainiert wird als auch der Datensatz, an dem das Modell validiert wird, eine der zwei Observationen mit Ausprägung (Missing) enthalten. Da an späterer Stelle auch Cross-Validation eingesetzt wird, wäre es sehr wahrscheinlich, dass es zu der Situation käme, in der im Testdatensatz Faktorstufen auftauchen, die im Trainingsdatensatz nicht vorkamen. 
+
+```{r Umgang mit Missings}
+titanic %>% 
+  mutate(age_missing = is.na(Age)) %>% 
+  group_by(age_missing) %>% 
+  summarize(surival_rate = mean(Survived, na.rm = T)) 
+
+titanic <- titanic %>% 
+  mutate(age_missing = is.na(Age))
+
+titanic$Age[is.na(titanic$Age)] <- median(titanic$Age, na.rm = TRUE)
+
+titanic$Fare[is.na(titanic$Fare)] <- median(titanic$Fare, na.rm = TRUE)
+
+titanic$Cabin[titanic$Cabin == ''] <- NA
+
+
+titanic <- titanic %>% 
+  filter(!(Embarked == ''))  
+
+titanic <- titanic %>% 
+  mutate(cabin_missing = is.na(Cabin)) 
+
+```
+
+Die kategorialen Variablen wurden zu Faktorvariablen umgewandelt.
+
+```{r Faktoren}
+titanic$PassengerId <- factor(titanic$PassengerId)
+titanic$Survived <- factor(titanic$Survived)
+titanic$Pclass <- factor(titanic$Pclass)
+titanic$Sex <- factor(titanic$Sex)
+titanic$Embarked <- factor(titanic$Embarked)
+titanic$age_missing <- factor(titanic$age_missing)
+titanic$cabin_missing <- factor(titanic$cabin_missing)
+#titanic$Cabin <- fct_explicit_na(titanic$Cabin)
+```
+
+## Modellierung
+
+Zur Prognose der Variablen *Survived* wurde Boosting verwendet. Zuvor wurde der Gesamtdatensatz nach erfolgter Behandlung der Missings wieder in den Trainingsdatensatz und den Testdatensatz aufgeteilt. Außerdem wurden Variablen, die Passagiere eindeutig oder zumindest sehr genau individuell identifizieren können, nicht als Prädiktoren für die Prognose verwendet, um ein Overfitting der Modelle zu vermeiden. Deshalb wurden die Variablen *PassengerId*, *Name*, *Ticket* und *Cabin* entfernt.
+
+```{r Trainset und Testset}
+unique(titanic$PassengerId) %>% length()
+unique(titanic$Name) %>% length()
+unique(titanic$Ticket) %>% length()
+table(titanic$Cabin)
+
+train <- titanic %>% 
+  filter(IsTrain) %>% 
+  dplyr::select(-PassengerId, -IsTrain, -Name, -Ticket, -Cabin)
+
+test <- titanic %>% 
+  filter(!IsTrain) %>%
+  dplyr::select(-PassengerId, -IsTrain, -Name, -Ticket, -Cabin, -Survived)
+```
+
+Wir spalten die Trainingsdaten *train* in *titanic_train* und *titanic_test* auf. *titanic_train* wird für das Parametertuning per Cross Validation verwendet. Mit *titanic_test* bewerten wir das anhand von *titanic_train* mit den besten Parameterwerten trainierte Modell. Die Accuracy, die wir beim Test an *titanic_test* erhalten, dient als Schätzung für die Accuracy, die bei Submission auf Kaggle zu erwarten ist.
+
+```{r Split Train in titanic_train und titanic_test}
+set.seed(1234)
+train_split <- caret::createDataPartition(train$Survived, p = 0.75, list = FALSE)
+titanic_train <- train[train_split,]
+titanic_test <- train[-train_split,]
+```
+
+
+### Boosting
+
+Beim Boosting wird jeder Decision Tree auf einer modifizierten Version der Trainingsdaten trainiert. Bei jedem der trainierten Decision Trees werden die Informationen der vorherigen Trees genutzt, indem die Residuals des vorherigen Trees als abhängige Variable genutzt werden. Somit legt jeder folgende Baum besonderes Gewicht auf die Observationen, die von dem vorherigen Baum schlecht vorhergesagt wurden. Wie schnell dieser Lernvorgang geschieht, wird durch den Hyperparameter *shrinkage* bestimmt. Weitere zu bestimmende Hyperparameter sind die Anzahl der Bäume *B* und die Anzahl der Splits pro Baum *d*. Die Hyperparameter  werden durch Cross Validation an *titanic_train* bestimmt. Zunächst wird für jeden Hyperparameter eine Sequenz möglicher Werte gebildet und ein Grid names *boosting_parameters* erstellt, das alle möglichen Kombinationen der Werte der verschiedenen Hyperparameter enthält. Anschließend bilde ich den Vektor *folds* der die Indizes enthält, die genutzt werden, um eine Observation innerhalb der Cross Validation entweder dem Training des jeweiligen Modells oder dem Assessment zuzordnen. Für die Implementierung der Cross Validation verwende ich zwei ineinander verschachtelte for-Schleifen. Die erste SChleife iteriert über alle Kombinationen der Hyperparameter, die zweite Schleife iteriert über alle k Stufen der Cross Validation. Jede der k Folds wird in einer der k Stufen einmal dem Assessment des Modells dienen und in den anderen k-1 Stufen zum Trainieren des Modells verwendet. 
+
+```{r Boosting: Parametertuning an Trainingsset mit CV}
+ntrees <- seq(50, 200, 25)
+lambda <- c(0.001, 0.005, 0.01, 0.015, 0.02)
+n_splits <- seq(1, 4, 1)
+boosting_parameters <- expand_grid(ntrees, lambda, n_splits) 
+boosting_parameters <- boosting_parameters %>% 
+  mutate(id = 1:nrow(boosting_parameters))
+
+set.seed(1234)
+k <- 5
+folds <- sample(1:k, size = nrow(titanic_train), replace = TRUE)
+boosting_accuracy <- matrix(NA, nrow = k, ncol = nrow(boosting_parameters),
+                            dimnames = list(NULL, boosting_parameters$id)) 
+
+titanic_train_boosting <- titanic_train
+titanic_train_boosting$Survived <- as.character(titanic_train_boosting$Survived)
+
+
+for(i in 1:nrow(boosting_parameters)){
+  n.trees <- boosting_parameters$ntrees[i]
+  shrinkage <- boosting_parameters$lambda[i]
+  interaction.depth <- boosting_parameters$n_splits[i]
+  for(j in 1:k){
+    df_train <- titanic_train_boosting[j != folds,]
+    df_test <- titanic_train_boosting[j == folds,]
+    fit <- gbm(Survived ~ .,
+               data = df_train,
+               n.trees = n.trees,
+               interaction.depth = interaction.depth,
+               shrinkage = shrinkage)
+    pred <- predict(fit,
+                    newdata = df_test,
+                    type = "response")
+    pred_binary <- ifelse(pred > 0.5, 1, 0) %>% factor(levels = c(0, 1))
+    conf_matrix <- caret::confusionMatrix(data = pred_binary,
+                           reference = factor(df_test$Survived, levels = c(0,1)),
+                           positive = "1")
+    boosting_accuracy[j, i] <- conf_matrix$overall["Accuracy"]
+  }
+}
+
+accuracy_mean <- colMeans(boosting_accuracy)
+cv_accuracy <- accuracy_mean[which.max(accuracy_mean)]
+best_comb_boosting <- boosting_parameters[which.max(accuracy_mean),]
+```
+
+Nachdem beide Schleifen durchlaufen sind, erhalten wir eine Matrix, die für jede Kombination der Hyperparameter in jeder Stufe der Cross Validation die Accuracy des Modells enthält.
+
+```{r Accuracy Matrix}
+
+custom_kable <- function(data, fontsize = 12, fullwidth = FALSE){
+  knitr::kable(data) %>% 
+    kable_styling(font_size = fontsize, full_width = fullwidth)
+}
+
+boosting_accuracy %>% 
+  custom_kable()
+```
+
+
+
+Die höchste Accuracy wird mit einem Modell erzielt, dass `r best_comb_boosting[["ntrees"]]` Bäume mit je `r best_comb_boosting[["n_splits"]]` Splits und einer Lernrate (shrinkage) von `r best_comb_boosting[["lambda"]]` verwendet. Alle Observationen, die eine prognostizierte Wahrscheinlichkeit von über 0.5 aufweisen, werden als *Überlebend* klassifiziert. Das Modell mit den gemäß Cross Validation besten Parameterwerten für *B*, *d* und *shrinkage*  erzielt eine Cross Validation Accuracy von `r percent(accuracy_mean[which.max(accuracy_mean)], accuracy = 0.01)`.
+
+```{r Plot: Tuning Parameters Boosting, include=F}
+df <- boosting_parameters %>% 
+  mutate(accuracy = accuracy_mean)
+df_gather <- df %>% 
+  group_by(lambda) %>% 
+  mutate(mean_lambda = mean(accuracy)) %>% 
+  ungroup() %>% 
+  group_by(n_splits) %>% 
+  mutate(mean_n_splits = mean(accuracy)) %>% 
+  ungroup() %>% 
+  group_by(ntrees) %>% 
+  mutate(mean_ntrees = mean(accuracy)) %>% 
+  gather(key = "parameter",
+         value = "value",
+         -accuracy, - mean_lambda, - mean_n_splits, - mean_ntrees) 
+
+df_gather %>% 
+  filter(value > 0.001) %>% 
+  ggplot(aes(x = value, y = accuracy)) +
+  geom_jitter(alpha = 0.1) +
+  geom_smooth(se = T) +
+  facet_wrap(~parameter, scales = "free_x")
+
+
+```
+
+```{r Plot Boosting, include=F}
+df %>% 
+  filter(lambda != 0.001) %>% 
+  ggplot(aes(x = ntrees, y = accuracy, color = lambda, size = n_splits)) +
+  geom_point(alpha = .3)
+```  
+
+Zur abschließenden Bewertung des Modells bewerten wir die Prognosen des  Modells mit den soeben gefundenen Hyperparametern an dem Datensatz *titanic_test*, der nicht an der Auswahl der Hyperparameter beteiligt war.
+
+```{r Boosting: Bewertung des Modells an titanic_test}
+ntree_best <- best_comb_boosting[["ntrees"]] 
+n_split_best <- best_comb_boosting[["n_splits"]]
+lambda_best <- best_comb_boosting[["lambda"]]
+
+boosting_fit <- gbm(Survived ~ .,
+                    data = titanic_train_boosting,
+                    n.trees = ntree_best,
+                    interaction.depth = n_split_best,
+                    shrinkage = lambda_best)
+
+pred_boosting_titanic_test <- predict(boosting_fit,
+                                      newdata = titanic_test,
+                                      type = "response")
+pred_boosting_binary_titanic_test <- ifelse(pred_boosting_titanic_test > 0.5, 1, 0) %>%
+  factor(levels = c(0, 1))
+
+conf_matrix <- caret::confusionMatrix(data = pred_boosting_binary_titanic_test,
+                                      reference = factor(titanic_test$Survived, levels = c(0,1)),
+                                      positive = "1")
+
+accuracy <- list()
+accuracy$boosting <- conf_matrix$overall["Accuracy"]
+
+```
+
+Die Schätzung der Accuracy beträgt `r percent(accuracy$boosting, accuracy = 0.01)`. Zum Schluss bestimmen wir mit dem Boosting Modell die Prognosen für den Testdatensatz, speichern sie als csv file ab und reichen sie anschließend auf Kaggle als Submission ein.
+
+```{r Boosting: Prognose Testset}
+train_boosting <- train
+train_boosting$Survived <- as.character(train_boosting$Survived)
+
+mod_boosting <- gbm(Survived ~ .,
+                    data = train_boosting,
+                    n.trees = ntree_best,
+                    interaction.depth = n_split_best,
+                    shrinkage = lambda_best)
+
+pred_boosting_comp <- predict(mod_boosting,
+                              newdata = test,
+                              type = "response")
+pred_boosting_binary_comp <- ifelse(pred_boosting_comp > 0.5, 1, 0) 
+
+submission_df <- data.frame(PassengerId = PassengerId_submission,
+                            Survived = pred_boosting_binary_comp)
+write_csv(submission_df,
+          path = "submission.csv")
+```
+
+
+## Ergebnis
+
+Bei der Prognose des Testsets der Competition erzielt unser Boosting Modell mit shrinkage = `r lambda_best`, n.trees = `r ntree_best` und interaction.depth = `r n_split_best` eine Accuracy von 77%.

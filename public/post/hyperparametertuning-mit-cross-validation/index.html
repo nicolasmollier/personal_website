@@ -1,0 +1,1240 @@
+<!DOCTYPE html><html lang="de" >
+
+<head>
+
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="generator" content="Source Themes Academic 4.8.0">
+
+  
+
+  
+  
+
+  
+  
+  
+  
+  
+    
+    
+    
+  
+  
+
+  <meta name="author" content="Nicolas Mollier">
+
+  
+  
+  
+    
+  
+  <meta name="description" content="Eine Analyse für die Teilnahme an der Titanic Machine Learning Competition. In dieser Competition geht es darum, möglichst akkurat vorherzusagen, welche der Passagiere der Titanic überleben und welche nicht. Das Hauptaugenmerk dieser Analyse liegt auf dem Hyperparametertuning per Cross-Validation.">
+
+  
+  <link rel="alternate" hreflang="de" href="/post/hyperparametertuning-mit-cross-validation/">
+
+  
+
+
+  
+  
+  
+  <meta name="theme-color" content="#2962ff">
+  
+
+  
+  
+
+  
+  
+  
+  
+    
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.14.0/css/all.min.css" integrity="sha256-FMvZuGapsJLjouA6k7Eo2lusoAX9i0ShlWFG6qt7SLc=" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.css" integrity="sha256-Vzbj7sDDS/woiFS3uNKo8eIuni59rjyNGtXfstRzStA=" crossorigin="anonymous">
+
+    
+    
+    
+      
+    
+    
+      
+      
+        
+          <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.2/styles/github.min.css" crossorigin="anonymous" title="hl-light">
+          <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.2/styles/dracula.min.css" crossorigin="anonymous" title="hl-dark" disabled>
+        
+      
+    
+
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.5.1/leaflet.css" integrity="sha256-SHMGCYmST46SoyGgo4YR/9AlK1vf3ff84Aq9yK4hdqM=" crossorigin="anonymous">
+    
+
+    
+
+    
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/lazysizes/5.1.2/lazysizes.min.js" integrity="sha256-Md1qLToewPeKjfAHU1zyPwOutccPAm5tahnaw7Osw0A=" crossorigin="anonymous" async></script>
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+        
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+
+  
+
+  
+  
+  
+    
+      
+      
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Montserrat:400,700%7CRoboto:400,400italic,700%7CRoboto+Mono&display=swap">
+    
+  
+
+  
+  
+  
+  
+  <link rel="stylesheet" href="/css/academic.css">
+
+  
+
+
+
+
+  
+
+
+  
+  
+
+  
+
+  <link rel="manifest" href="/index.webmanifest">
+  <link rel="icon" type="image/png" href="/images/icon_hubb2c620e44f44b05f57a49afd6fd01f1_2551_32x32_fill_lanczos_center_2.png">
+  <link rel="apple-touch-icon" type="image/png" href="/images/icon_hubb2c620e44f44b05f57a49afd6fd01f1_2551_192x192_fill_lanczos_center_2.png">
+
+  <link rel="canonical" href="/post/hyperparametertuning-mit-cross-validation/">
+
+  
+  
+  
+  
+  
+  
+  
+    
+    
+  
+  
+  <meta property="twitter:card" content="summary">
+  
+  <meta property="og:site_name" content="Nicolas Mollier">
+  <meta property="og:url" content="/post/hyperparametertuning-mit-cross-validation/">
+  <meta property="og:title" content="Kaggle: Titanic Machine Learning Competition | Nicolas Mollier">
+  <meta property="og:description" content="Eine Analyse für die Teilnahme an der Titanic Machine Learning Competition. In dieser Competition geht es darum, möglichst akkurat vorherzusagen, welche der Passagiere der Titanic überleben und welche nicht. Das Hauptaugenmerk dieser Analyse liegt auf dem Hyperparametertuning per Cross-Validation."><meta property="og:image" content="/images/icon_hubb2c620e44f44b05f57a49afd6fd01f1_2551_512x512_fill_lanczos_center_2.png">
+  <meta property="twitter:image" content="/images/icon_hubb2c620e44f44b05f57a49afd6fd01f1_2551_512x512_fill_lanczos_center_2.png"><meta property="og:locale" content="de">
+  
+    
+      <meta property="article:published_time" content="2020-08-23T00:00:00&#43;00:00">
+    
+    <meta property="article:modified_time" content="2020-08-23T19:43:03&#43;02:00">
+  
+
+  
+
+
+    
+
+
+
+
+
+
+  
+
+
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "/post/hyperparametertuning-mit-cross-validation/"
+  },
+  "headline": "Kaggle: Titanic Machine Learning Competition",
+  
+  "datePublished": "2020-08-23T00:00:00Z",
+  "dateModified": "2020-08-23T19:43:03+02:00",
+  
+  "author": {
+    "@type": "Person",
+    "name": "Nicolas Mollier"
+  },
+  
+  "publisher": {
+    "@type": "Organization",
+    "name": "Nicolas Mollier",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "/images/icon_hubb2c620e44f44b05f57a49afd6fd01f1_2551_192x192_fill_lanczos_center_2.png"
+    }
+  },
+  "description": "Eine Analyse für die Teilnahme an der Titanic Machine Learning Competition. In dieser Competition geht es darum, möglichst akkurat vorherzusagen, welche der Passagiere der Titanic überleben und welche nicht. Das Hauptaugenmerk dieser Analyse liegt auf dem Hyperparametertuning per Cross-Validation."
+}
+</script>
+
+  
+
+  
+
+
+  
+
+
+  
+
+
+
+
+
+  <title>Kaggle: Titanic Machine Learning Competition | Nicolas Mollier</title>
+
+</head>
+
+
+<body id="top" data-spy="scroll" data-offset="70" data-target="#TableOfContents" class=" ">
+
+  <aside class="search-results" id="search">
+  <div class="container">
+    <section class="search-header">
+
+      <div class="row no-gutters justify-content-between mb-3">
+        <div class="col-6">
+          <h1>Suche</h1>
+        </div>
+        <div class="col-6 col-search-close">
+          <a class="js-search" href="#"><i class="fas fa-times-circle text-muted" aria-hidden="true"></i></a>
+        </div>
+      </div>
+
+      <div id="search-box">
+        
+        <input name="q" id="search-query" placeholder="Suche..." autocapitalize="off"
+        autocomplete="off" autocorrect="off" spellcheck="false" type="search" class="form-control">
+        
+      </div>
+
+    </section>
+    <section class="section-search-results">
+
+      <div id="search-hits">
+        
+      </div>
+
+    </section>
+  </div>
+</aside>
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+<nav class="navbar navbar-expand-lg navbar-light compensate-for-scrollbar" id="navbar-main">
+  <div class="container">
+
+    
+    <div class="d-none d-lg-inline-flex">
+      <a class="navbar-brand" href="/">Nicolas Mollier</a>
+    </div>
+    
+
+    
+    <button type="button" class="navbar-toggler" data-toggle="collapse"
+            data-target="#navbar-content" aria-controls="navbar" aria-expanded="false" aria-label="Navigation einblenden">
+    <span><i class="fas fa-bars"></i></span>
+    </button>
+    
+
+    
+    <div class="navbar-brand-mobile-wrapper d-inline-flex d-lg-none">
+      <a class="navbar-brand" href="/">Nicolas Mollier</a>
+    </div>
+    
+
+    
+    
+    <div class="navbar-collapse main-menu-item collapse justify-content-start" id="navbar-content">
+
+      
+      <ul class="navbar-nav d-md-inline-flex">
+        
+
+        
+
+        
+        
+        
+          
+        
+
+        
+        
+        
+        
+        
+        
+          
+          
+          
+            
+          
+          
+        
+
+        <li class="nav-item">
+          <a class="nav-link " href="/#projects"><span>Projekte</span></a>
+        </li>
+
+        
+        
+
+        
+
+        
+        
+        
+          
+        
+
+        
+        
+        
+        
+        
+        
+
+        <li class="nav-item">
+          <a class="nav-link " href="/courses/"><span>Bücher</span></a>
+        </li>
+
+        
+        
+
+        
+
+        
+        
+        
+          
+        
+
+        
+        
+        
+        
+        
+        
+          
+          
+          
+            
+          
+          
+        
+
+        <li class="nav-item">
+          <a class="nav-link " href="/#contact"><span>Kontakt</span></a>
+        </li>
+
+        
+        
+
+        
+
+        
+        
+        
+          
+        
+
+        
+        
+        
+        
+        
+        
+
+        <li class="nav-item">
+          <a class="nav-link " href="/files/cv.pdf"><span>Lebenslauf</span></a>
+        </li>
+
+        
+        
+
+      
+
+        
+      </ul>
+    </div>
+
+    <ul class="nav-icons navbar-nav flex-row ml-auto d-flex pl-md-2">
+      
+      <li class="nav-item">
+        <a class="nav-link js-search" href="#" aria-label="Suche"><i class="fas fa-search" aria-hidden="true"></i></a>
+      </li>
+      
+
+      
+
+      
+
+    </ul>
+
+  </div>
+</nav>
+
+
+
+  <article class="article">
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+  
+  
+<div class="article-container pt-3">
+  <h1>Kaggle: Titanic Machine Learning Competition</h1>
+
+  
+
+  
+    
+
+
+<div class="article-metadata">
+
+  
+  
+
+  
+  <span class="article-date">
+    
+    
+      
+          Zuletzt aktualisiert am
+      
+    
+    Aug 23, 2020
+  </span>
+  
+
+  
+
+  
+  <span class="middot-divider"></span>
+  <span class="article-reading-time">
+    7 min Lesezeit
+  </span>
+  
+
+  
+  
+  
+
+  
+  
+
+</div>
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+</div>
+
+
+
+  <div class="article-container">
+
+    <div class="article-style">
+      
+
+
+<p>Eine Analyse für die Teilnahme an der Titanic Machine Learning Competition. In dieser Competition geht es darum, möglichst akkurat vorherzusagen, welche der Passagiere der Titanic überleben und welche nicht. Das Hauptaugenmerk dieser Analyse liegt auf dem Hyperparametertuning per Cross-Validation. Insbesondere wollte ich die Cross Validation durch Schleifen selbst inmplementieren statt z.B. caret bzw tidymodels dafür zu verwenden. Für die Modellierung wurde <em>Boosting</em> verwendet. Zwar wurde eine Auswahl aus den zur Verfügung stehenden Prädiktoren getroffen. Eine elaborierte analytische Auswahl der zu verwendenden Prädiktoren und deren Transformation wurden allerdings ausgeklammert. <!-- Für eine Analyse, bei der die Auswahl der richtigen Prädiktoren im Mittelpunkt steht, siehe. Für eine Analyse zum Umgang mit sehr vielen Variablen (Hauptkomponentenanalyse) siehe. --></p>
+<div id="packages" class="section level2">
+<h2>Packages</h2>
+<pre class="r"><code>library(tidyverse)
+library(knitr)
+library(kableExtra)
+library(mice)
+library(caret)
+library(modelr)
+library(plotROC)
+library(randomForest)
+library(boot)
+library(gbm)
+library(scales)
+library(e1071)</code></pre>
+</div>
+<div id="load-the-data" class="section level2">
+<h2>Load the Data</h2>
+<p>Im ersten Schritt laden wir den Trainingsdatensatz und den Testdatensatz, nachdem wir beide unter <a href="https://www.kaggle.com/c/titanic/data" class="uri">https://www.kaggle.com/c/titanic/data</a> heruntergeladen haben. Anschließend verknüpfe ich den Trainings- und Testdatensatz zu einem Datensatz, um das Pre-Processing für beide gleichzeitig durchführen zu können. Dazu ist es notwendig, die Observationen der Trainingsdaten als solche kenntlich zu machen und bei den Testdaten die Variable <em>Survived</em> zu ergänzen, welche in jeder der Testobservationen den Wert NA enthält.</p>
+<pre class="r"><code>train &lt;- read.csv(file = &quot;train.csv&quot;, 
+                          header = TRUE,
+                          stringsAsFactors = FALSE)
+test &lt;- read.csv(file = &quot;test.csv&quot;, 
+                         header = TRUE,
+                         stringsAsFactors = FALSE)
+PassengerId_submission &lt;- test$PassengerId
+
+train$IsTrain &lt;- rep(TRUE, nrow(train))
+test$IsTrain &lt;- rep(FALSE, nrow(test))
+test$Survived &lt;- rep(NA, nrow(test))
+
+titanic &lt;- rbind(train, test)</code></pre>
+</div>
+<div id="data-inspection" class="section level2">
+<h2>Data Inspection</h2>
+<p>Der Datensatz enthält 13 Variablen (Die Indikatorvariable <em>IsTrain</em> ausgenommen). Für die Prognose der Variablen <em>Survived</em> stehen also zunächst 11 Variablen zur Verfügung. Der Testdatensatz umfasst 891 Observationen, der Trainingsdatensatz 418.</p>
+<pre class="r"><code>glimpse(titanic)
+head(titanic) 
+summary(titanic) </code></pre>
+<p>Unter den Prädiktorvariablen enthalten <em>Age</em>, <em>Fare</em>, <em>Cabin</em> und <em>Embarked</em> fehlende Werte. Die Variable <em>Age</em> enthält 263 fehlende Werte. Bei der Variablen <em>Fare</em> fehlt lediglich bei einer Observation ein Wert. <em>Cabin</em> hat 1014 Missings und <em>Embarked</em> weist 2 Missings auf.</p>
+<p>Bei der ersten Untersuchung ist mir eine Unstimmigkeit in den Daten aufgefallen. Zwei Namen tauchen doppelt auf: Connolly, Miss. Kate und Kelly, Mr. James. Allerdings unterscheiden sich die Ausprägungen der anderen Variablen für die jeweiligen Passagiere mit gleichem Namen. <em>PassengerID</em>, <em>Age</em> und <em>Ticketnummer</em> unterscheiden sich jeweils. Außerdem handelt es sich um nicht unübliche Vor- und Nachnamen, sodass davon auszugehen ist, dass es sich um unterschiedliche Personen gleichen Namens handelt.</p>
+<pre class="r"><code>titanic %&gt;% 
+  count(Name) %&gt;% 
+  filter(n &gt; 1) 
+
+titanic %&gt;% 
+  filter(Name %in% duplicate_names)</code></pre>
+</div>
+<div id="pre-processing-umgang-mit-missings" class="section level2">
+<h2>Pre-Processing: Umgang mit Missings</h2>
+<p>Sowohl bei <em>Age</em> als auch bei <em>Fare</em> wurden die fehlenden Werte durch den Median der jeweiligen Variablen ersetzt. Zusätzlich wurde eine neue Variable <em>age_missing</em> kreiert, die anzeigt, ob die entsprechende Observation einen fehlenden Wert in der Variable <em>Age</em> aufweist. Für die Variable <em>Cabin</em> wurde eine neue Faktorstufe für die 1014 fehlenden Werte geschaffen. Observationen mit Missings in Variable <em>Embarked</em> werden entfernt, da lediglich zwei Observationen Missings in dieser Variable aufweisen. Würde man an dieser Stelle wie bei <em>Cabin</em> eine neue Faktorstufe (Missing) erzeugen, würde dies später in der Modellierung zu Problemen führen, falls nicht sowohl der Datensatz an dem das Modell trainiert wird als auch der Datensatz, an dem das Modell validiert wird, eine der zwei Observationen mit Ausprägung (Missing) enthalten. Da an späterer Stelle auch Cross-Validation eingesetzt wird, wäre es sehr wahrscheinlich, dass es zu der Situation käme, in der im Testdatensatz Faktorstufen auftauchen, die im Trainingsdatensatz nicht vorkamen.</p>
+<pre class="r"><code>titanic %&gt;% 
+  mutate(age_missing = is.na(Age)) %&gt;% 
+  group_by(age_missing) %&gt;% 
+  summarize(surival_rate = mean(Survived, na.rm = T)) 
+
+titanic &lt;- titanic %&gt;% 
+  mutate(age_missing = is.na(Age))
+
+titanic$Age[is.na(titanic$Age)] &lt;- median(titanic$Age, na.rm = TRUE)
+
+titanic$Fare[is.na(titanic$Fare)] &lt;- median(titanic$Fare, na.rm = TRUE)
+
+titanic$Cabin[titanic$Cabin == &#39;&#39;] &lt;- NA
+
+
+titanic &lt;- titanic %&gt;% 
+  filter(!(Embarked == &#39;&#39;))  
+
+titanic &lt;- titanic %&gt;% 
+  mutate(cabin_missing = is.na(Cabin)) </code></pre>
+<p>Die kategorialen Variablen wurden zu Faktorvariablen umgewandelt.</p>
+<pre class="r"><code>titanic$PassengerId &lt;- factor(titanic$PassengerId)
+titanic$Survived &lt;- factor(titanic$Survived)
+titanic$Pclass &lt;- factor(titanic$Pclass)
+titanic$Sex &lt;- factor(titanic$Sex)
+titanic$Embarked &lt;- factor(titanic$Embarked)
+titanic$age_missing &lt;- factor(titanic$age_missing)
+titanic$cabin_missing &lt;- factor(titanic$cabin_missing)
+#titanic$Cabin &lt;- fct_explicit_na(titanic$Cabin)</code></pre>
+</div>
+<div id="modellierung" class="section level2">
+<h2>Modellierung</h2>
+<p>Zur Prognose der Variablen <em>Survived</em> wurde Boosting verwendet. Zuvor wurde der Gesamtdatensatz nach erfolgter Behandlung der Missings wieder in den Trainingsdatensatz und den Testdatensatz aufgeteilt. Außerdem wurden Variablen, die Passagiere eindeutig oder zumindest sehr genau individuell identifizieren können, nicht als Prädiktoren für die Prognose verwendet, um ein Overfitting der Modelle zu vermeiden. Deshalb wurden die Variablen <em>PassengerId</em>, <em>Name</em>, <em>Ticket</em> und <em>Cabin</em> entfernt.</p>
+<pre class="r"><code>unique(titanic$PassengerId) %&gt;% length()
+unique(titanic$Name) %&gt;% length()
+unique(titanic$Ticket) %&gt;% length()
+table(titanic$Cabin)
+
+train &lt;- titanic %&gt;% 
+  filter(IsTrain) %&gt;% 
+  dplyr::select(-PassengerId, -IsTrain, -Name, -Ticket, -Cabin)
+
+test &lt;- titanic %&gt;% 
+  filter(!IsTrain) %&gt;%
+  dplyr::select(-PassengerId, -IsTrain, -Name, -Ticket, -Cabin, -Survived)</code></pre>
+<p>Wir spalten die Trainingsdaten <em>train</em> in <em>titanic_train</em> und <em>titanic_test</em> auf. <em>titanic_train</em> wird für das Parametertuning per Cross Validation verwendet. Mit <em>titanic_test</em> bewerten wir das anhand von <em>titanic_train</em> mit den besten Parameterwerten trainierte Modell. Die Accuracy, die wir beim Test an <em>titanic_test</em> erhalten, dient als Schätzung für die Accuracy, die bei Submission auf Kaggle zu erwarten ist.</p>
+<pre class="r"><code>set.seed(1234)
+train_split &lt;- caret::createDataPartition(train$Survived, p = 0.75, list = FALSE)
+titanic_train &lt;- train[train_split,]
+titanic_test &lt;- train[-train_split,]</code></pre>
+<div id="boosting" class="section level3">
+<h3>Boosting</h3>
+<p>Beim Boosting wird jeder Decision Tree auf einer modifizierten Version der Trainingsdaten trainiert. Bei jedem der trainierten Decision Trees werden die Informationen der vorherigen Trees genutzt, indem die Residuals des vorherigen Trees als abhängige Variable genutzt werden. Somit legt jeder folgende Baum besonderes Gewicht auf die Observationen, die von dem vorherigen Baum schlecht vorhergesagt wurden. Wie schnell dieser Lernvorgang geschieht, wird durch den Hyperparameter <em>shrinkage</em> bestimmt. Weitere zu bestimmende Hyperparameter sind die Anzahl der Bäume <em>B</em> und die Anzahl der Splits pro Baum <em>d</em>. Die Hyperparameter werden durch Cross Validation an <em>titanic_train</em> bestimmt. Zunächst wird für jeden Hyperparameter eine Sequenz möglicher Werte gebildet und ein Grid names <em>boosting_parameters</em> erstellt, das alle möglichen Kombinationen der Werte der verschiedenen Hyperparameter enthält. Anschließend bilde ich den Vektor <em>folds</em> der die Indizes enthält, die genutzt werden, um eine Observation innerhalb der Cross Validation entweder dem Training des jeweiligen Modells oder dem Assessment zuzordnen. Für die Implementierung der Cross Validation verwende ich zwei ineinander verschachtelte for-Schleifen. Die erste SChleife iteriert über alle Kombinationen der Hyperparameter, die zweite Schleife iteriert über alle k Stufen der Cross Validation. Jede der k Folds wird in einer der k Stufen einmal dem Assessment des Modells dienen und in den anderen k-1 Stufen zum Trainieren des Modells verwendet.</p>
+<pre class="r"><code>ntrees &lt;- seq(50, 200, 25)
+lambda &lt;- c(0.001, 0.005, 0.01, 0.015, 0.02)
+n_splits &lt;- seq(1, 4, 1)
+boosting_parameters &lt;- expand_grid(ntrees, lambda, n_splits) 
+boosting_parameters &lt;- boosting_parameters %&gt;% 
+  mutate(id = 1:nrow(boosting_parameters))
+
+set.seed(1234)
+k &lt;- 5
+folds &lt;- sample(1:k, size = nrow(titanic_train), replace = TRUE)
+boosting_accuracy &lt;- matrix(NA, nrow = k, ncol = nrow(boosting_parameters),
+                            dimnames = list(NULL, boosting_parameters$id)) 
+
+titanic_train_boosting &lt;- titanic_train
+titanic_train_boosting$Survived &lt;- as.character(titanic_train_boosting$Survived)
+
+
+for(i in 1:nrow(boosting_parameters)){
+  n.trees &lt;- boosting_parameters$ntrees[i]
+  shrinkage &lt;- boosting_parameters$lambda[i]
+  interaction.depth &lt;- boosting_parameters$n_splits[i]
+  for(j in 1:k){
+    df_train &lt;- titanic_train_boosting[j != folds,]
+    df_test &lt;- titanic_train_boosting[j == folds,]
+    fit &lt;- gbm(Survived ~ .,
+               data = df_train,
+               n.trees = n.trees,
+               interaction.depth = interaction.depth,
+               shrinkage = shrinkage)
+    pred &lt;- predict(fit,
+                    newdata = df_test,
+                    type = &quot;response&quot;)
+    pred_binary &lt;- ifelse(pred &gt; 0.5, 1, 0) %&gt;% factor(levels = c(0, 1))
+    conf_matrix &lt;- caret::confusionMatrix(data = pred_binary,
+                           reference = factor(df_test$Survived, levels = c(0,1)),
+                           positive = &quot;1&quot;)
+    boosting_accuracy[j, i] &lt;- conf_matrix$overall[&quot;Accuracy&quot;]
+  }
+}
+
+accuracy_mean &lt;- colMeans(boosting_accuracy)
+cv_accuracy &lt;- accuracy_mean[which.max(accuracy_mean)]
+best_comb_boosting &lt;- boosting_parameters[which.max(accuracy_mean),]</code></pre>
+<p>Nachdem beide Schleifen durchlaufen sind, erhalten wir eine Matrix, die für jede Kombination der Hyperparameter in jeder Stufe der Cross Validation die Accuracy des Modells enthält.</p>
+<pre class="r"><code>custom_kable &lt;- function(data, fontsize = 12, fullwidth = FALSE){
+  knitr::kable(data) %&gt;% 
+    kable_styling(font_size = fontsize, full_width = fullwidth)
+}
+
+boosting_accuracy %&gt;% 
+  custom_kable()</code></pre>
+<p>Die höchste Accuracy wird mit einem Modell erzielt, dass 200 Bäume mit je 4 Splits und einer Lernrate (shrinkage) von 0.02 verwendet. Alle Observationen, die eine prognostizierte Wahrscheinlichkeit von über 0.5 aufweisen, werden als <em>Überlebend</em> klassifiziert. Das Modell mit den gemäß Cross Validation besten Parameterwerten für <em>B</em>, <em>d</em> und <em>shrinkage</em> erzielt eine Cross Validation Accuracy von 84.37%.</p>
+<p>Zur abschließenden Bewertung des Modells bewerten wir die Prognosen des Modells mit den soeben gefundenen Hyperparametern an dem Datensatz <em>titanic_test</em>, der nicht an der Auswahl der Hyperparameter beteiligt war.</p>
+<pre class="r"><code>ntree_best &lt;- best_comb_boosting[[&quot;ntrees&quot;]] 
+n_split_best &lt;- best_comb_boosting[[&quot;n_splits&quot;]]
+lambda_best &lt;- best_comb_boosting[[&quot;lambda&quot;]]
+
+boosting_fit &lt;- gbm(Survived ~ .,
+                    data = titanic_train_boosting,
+                    n.trees = ntree_best,
+                    interaction.depth = n_split_best,
+                    shrinkage = lambda_best)
+
+pred_boosting_titanic_test &lt;- predict(boosting_fit,
+                                      newdata = titanic_test,
+                                      type = &quot;response&quot;)
+pred_boosting_binary_titanic_test &lt;- ifelse(pred_boosting_titanic_test &gt; 0.5, 1, 0) %&gt;%
+  factor(levels = c(0, 1))
+
+conf_matrix &lt;- caret::confusionMatrix(data = pred_boosting_binary_titanic_test,
+                                      reference = factor(titanic_test$Survived, levels = c(0,1)),
+                                      positive = &quot;1&quot;)
+
+accuracy &lt;- list()
+accuracy$boosting &lt;- conf_matrix$overall[&quot;Accuracy&quot;]</code></pre>
+<p>Die Schätzung der Accuracy beträgt 79.28%. Zum Schluss bestimmen wir mit dem Boosting Modell die Prognosen für den Testdatensatz, speichern sie als csv file ab und reichen sie anschließend auf Kaggle als Submission ein.</p>
+<pre class="r"><code>train_boosting &lt;- train
+train_boosting$Survived &lt;- as.character(train_boosting$Survived)
+
+mod_boosting &lt;- gbm(Survived ~ .,
+                    data = train_boosting,
+                    n.trees = ntree_best,
+                    interaction.depth = n_split_best,
+                    shrinkage = lambda_best)
+
+pred_boosting_comp &lt;- predict(mod_boosting,
+                              newdata = test,
+                              type = &quot;response&quot;)
+pred_boosting_binary_comp &lt;- ifelse(pred_boosting_comp &gt; 0.5, 1, 0) 
+
+submission_df &lt;- data.frame(PassengerId = PassengerId_submission,
+                            Survived = pred_boosting_binary_comp)
+write_csv(submission_df,
+          path = &quot;submission.csv&quot;)</code></pre>
+</div>
+</div>
+<div id="ergebnis" class="section level2">
+<h2>Ergebnis</h2>
+<p>Bei der Prognose des Testsets der Competition erzielt unser Boosting Modell mit shrinkage = 0.02, n.trees = 200 und interaction.depth = 4 eine Accuracy von 77%.</p>
+</div>
+
+    </div>
+
+    
+
+
+
+
+
+
+
+
+<div class="share-box" aria-hidden="true">
+  <ul class="share">
+    
+      
+      
+      
+        
+      
+      
+      
+      <li>
+        <a href="https://twitter.com/intent/tweet?url=/post/hyperparametertuning-mit-cross-validation/&amp;text=Kaggle:%20Titanic%20Machine%20Learning%20Competition" target="_blank" rel="noopener" class="share-btn-twitter">
+          <i class="fab fa-twitter"></i>
+        </a>
+      </li>
+    
+      
+      
+      
+        
+      
+      
+      
+      <li>
+        <a href="https://www.facebook.com/sharer.php?u=/post/hyperparametertuning-mit-cross-validation/&amp;t=Kaggle:%20Titanic%20Machine%20Learning%20Competition" target="_blank" rel="noopener" class="share-btn-facebook">
+          <i class="fab fa-facebook"></i>
+        </a>
+      </li>
+    
+      
+      
+      
+        
+      
+      
+      
+      <li>
+        <a href="mailto:?subject=Kaggle:%20Titanic%20Machine%20Learning%20Competition&amp;body=/post/hyperparametertuning-mit-cross-validation/" target="_blank" rel="noopener" class="share-btn-email">
+          <i class="fas fa-envelope"></i>
+        </a>
+      </li>
+    
+      
+      
+      
+        
+      
+      
+      
+      <li>
+        <a href="https://www.linkedin.com/shareArticle?url=/post/hyperparametertuning-mit-cross-validation/&amp;title=Kaggle:%20Titanic%20Machine%20Learning%20Competition" target="_blank" rel="noopener" class="share-btn-linkedin">
+          <i class="fab fa-linkedin-in"></i>
+        </a>
+      </li>
+    
+      
+      
+      
+        
+      
+      
+      
+      <li>
+        <a href="whatsapp://send?text=Kaggle:%20Titanic%20Machine%20Learning%20Competition%20/post/hyperparametertuning-mit-cross-validation/" target="_blank" rel="noopener" class="share-btn-whatsapp">
+          <i class="fab fa-whatsapp"></i>
+        </a>
+      </li>
+    
+      
+      
+      
+        
+      
+      
+      
+      <li>
+        <a href="https://service.weibo.com/share/share.php?url=/post/hyperparametertuning-mit-cross-validation/&amp;title=Kaggle:%20Titanic%20Machine%20Learning%20Competition" target="_blank" rel="noopener" class="share-btn-weibo">
+          <i class="fab fa-weibo"></i>
+        </a>
+      </li>
+    
+  </ul>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+  
+    
+    
+    
+      
+    
+    
+    
+    <div class="media author-card content-widget-hr">
+      
+        
+        <img class="avatar mr-3 avatar-circle" src="/author/nicolas-mollier/avatar_hua96a9129eb40319c6af4aa5dcdac3568_168993_270x270_fill_q90_lanczos_center.jpg" alt="Nicolas Mollier">
+      
+
+      <div class="media-body">
+        <h5 class="card-title"><a href="/">Nicolas Mollier</a></h5>
+        <h6 class="card-subtitle">Master Student in Data Science</h6>
+        <p class="card-text">My research interests include distributed robotics, mobile computing and programmable matter.</p>
+        <ul class="network-icon" aria-hidden="true">
+  
+    
+    
+    
+      
+    
+    
+    
+    
+    
+      
+    
+    <li>
+      <a href="/#contact" >
+        <i class="fas fa-envelope"></i>
+      </a>
+    </li>
+  
+    
+    
+    
+    
+    
+    
+    
+      
+    
+    <li>
+      <a href="https://scholar.google.co.uk/citations?user=sIwtMXoAAAAJ" target="_blank" rel="noopener">
+        <i class="ai ai-google-scholar"></i>
+      </a>
+    </li>
+  
+    
+    
+    
+      
+    
+    
+    
+    
+    
+      
+    
+    <li>
+      <a href="https://github.com/nicolasmollier" target="_blank" rel="noopener">
+        <i class="fab fa-github"></i>
+      </a>
+    </li>
+  
+    
+    
+    
+      
+    
+    
+    
+    
+    
+      
+    
+    <li>
+      <a href="https://www.instagram.com/nicolas.mollier/" target="_blank" rel="noopener">
+        <i class="fab fa-instagram"></i>
+      </a>
+    </li>
+  
+</ul>
+
+      </div>
+    </div>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+  </div>
+</article>
+
+      
+
+    
+    
+    
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js" integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=" crossorigin="anonymous"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.imagesloaded/4.1.4/imagesloaded.pkgd.min.js" integrity="sha256-lqvxZrPLtfffUl2G/e7szqSvPBILGbwmsGE1MKlOi0Q=" crossorigin="anonymous"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.isotope/3.0.6/isotope.pkgd.min.js" integrity="sha256-CBrpuqrMhXwcLLUd5tvQ4euBHCdh7wGlDfNz8vbu/iI=" crossorigin="anonymous"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.js" integrity="sha256-yt2kYMy0w8AbtF89WXb2P1rfjcP/HTHLT7097U8Y5b8=" crossorigin="anonymous"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/instant.page/5.1.0/instantpage.min.js" integrity="sha512-1+qUtKoh9XZW7j+6LhRMAyOrgSQKenQ4mluTR+cvxXjP1Z54RxZuzstR/H9kgPXQsVB8IW7DMDFUJpzLjvhGSQ==" crossorigin="anonymous"></script>
+
+      
+
+      
+        
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.2/highlight.min.js" integrity="sha512-7t8APmYpzEsZP7CYoA7RfMPV9Bb+PJHa9x2WiUnDXZx3XHveuyWUtvNOexhkierl5flZ3tr92dP1mMS+SGlD+A==" crossorigin="anonymous"></script>
+        
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.2/languages/r.min.js"></script>
+        
+      
+
+    
+
+    
+    
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.5.1/leaflet.js" integrity="sha256-EErZamuLefUnbMBQbsEqu1USa+btR2oIlCpBJbyD4/g=" crossorigin="anonymous"></script>
+    
+
+    
+    
+    <script>const code_highlighting = true;</script>
+    
+
+    
+    
+    <script>const isSiteThemeDark = false;</script>
+    
+
+    
+    
+    
+    
+    
+    
+    <script>
+      const search_config = {"indexURI":"/index.json","minLength":1,"threshold":0.3};
+      const i18n = {"no_results":"Nichts gefunden","placeholder":"Suche...","results":"Suchergebnisse"};
+      const content_type = {
+        'post': "Blog",
+        'project': "Projekte",
+        'publication' : "Publikationen",
+        'talk' : "Vorträge",
+        'slides' : "Folien"
+        };
+    </script>
+    
+
+    
+    
+
+    
+    
+    <script id="search-hit-fuse-template" type="text/x-template">
+      <div class="search-hit" id="summary-{{key}}">
+      <div class="search-hit-content">
+        <div class="search-hit-name">
+          <a href="{{relpermalink}}">{{title}}</a>
+          <div class="article-metadata search-hit-type">{{type}}</div>
+          <p class="search-hit-description">{{snippet}}</p>
+        </div>
+      </div>
+      </div>
+    </script>
+    
+
+    
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/3.2.1/fuse.min.js" integrity="sha256-VzgmKYmhsGNNN4Ph1kMW+BjoYJM2jV5i4IlFoeZA9XI=" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mark.js/8.11.1/jquery.mark.min.js" integrity="sha256-4HLtjeVgH0eIB3aZ9mLYF6E8oU5chNdjU6p6rrXpl9U=" crossorigin="anonymous"></script>
+    
+
+    
+    
+
+    
+    
+
+    
+    
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+      
+    
+    
+    
+    
+    <script src="/js/academic.min.3b2b658c61ebd725bd5fc606c89fe44c.js"></script>
+
+    
+
+
+
+
+
+
+  
+  
+  <div class="container">
+    <footer class="site-footer">
+  
+  <p class="powered-by">
+    
+      <a href="/privacy/">Privacy Policy</a>
+    
+    
+       &middot; 
+      <a href="/terms/">Terms</a>
+    
+  </p>
+  
+
+  <p class="powered-by">
+    
+  </p>
+
+  
+  
+
+
+
+
+
+
+  <p class="powered-by">
+    
+    Published with
+    <a href="https://sourcethemes.com/academic/" target="_blank" rel="noopener">Academic Website Builder</a>
+    
+
+    
+    <span class="float-right" aria-hidden="true">
+      <a href="#" class="back-to-top">
+        <span class="button_icon">
+          <i class="fas fa-chevron-up fa-2x"></i>
+        </span>
+      </a>
+    </span>
+    
+  </p>
+</footer>
+
+  </div>
+  
+
+  
+<div id="modal" class="modal fade" role="dialog">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Zitieren</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <pre><code class="tex hljs"></code></pre>
+      </div>
+      <div class="modal-footer">
+        <a class="btn btn-outline-primary my-1 js-copy-cite" href="#" target="_blank">
+          <i class="fas fa-copy"></i> Kopie
+        </a>
+        <a class="btn btn-outline-primary my-1 js-download-cite" href="#" target="_blank">
+          <i class="fas fa-download"></i> Download
+        </a>
+        <div id="modal-error"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
