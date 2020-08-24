@@ -48,15 +48,15 @@
 &lt;pre class=&#34;r&#34;&gt;&lt;code&gt;library(tidyverse)
 library(knitr)
 library(kableExtra)
-library(mice)
 library(caret)
+library(gbm)
+library(scales)
+library(e1071)
 library(modelr)
 library(plotROC)
 library(randomForest)
 library(boot)
-library(gbm)
-library(scales)
-library(e1071)&lt;/code&gt;&lt;/pre&gt;
+library(mice)&lt;/code&gt;&lt;/pre&gt;
 &lt;/div&gt;
 &lt;div id=&#34;load-the-data&#34; class=&#34;section level2&#34;&gt;
 &lt;h2&gt;Load the Data&lt;/h2&gt;
