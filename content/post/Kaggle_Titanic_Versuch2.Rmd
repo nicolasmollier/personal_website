@@ -1,0 +1,402 @@
+---
+title: "Kaggle_Titanic_ML_2"
+author: "Nicolas Mollier"
+date: "8/29/2020"
+output: html_document
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+
+```{r Packages, message = FALSE}
+library(tidyverse)
+library(tidymodels)
+library(doParallel)
+library(vip)
+```
+
+
+```{r Get the Data}
+titanic <- read_csv("train.csv")
+titanic_holdout <- read_csv("test.csv")
+```
+
+Wir beginnen mit einer kurzen explorativen Datenanalyse. Dazu betrachten wir zunächst in welcher Beziehung die einzelnen Prädiktoren mit der zu erklärenden Variablen *Survived* stehen. Die erste Grafik zeigt inwieweit sich die Verteilungen der numerischen Varaiblen unterscheiden, je nachedm ob die jeweiligen Passageiere (Observationen) überlebt haben oder nicht. Die Überlebenden waren zwar signifikant, aber nicht deutlich jünger als die Verstorbenen. Die Überlebenden besaßen deutlich höherpreisige Tickets als die Verstorbenen.
+
+```{r EDA 1}
+
+glimpse(titanic)
+
+# Relationship with Survival Rate
+
+titanic %>% 
+  select(Age, Fare, Parch, SibSp, Survived) %>% 
+  mutate(Survived = factor(Survived)) %>% 
+  pivot_longer(-Survived, names_to = "variable", values_to = "value") %>% 
+  ggplot(aes(x = Survived, y = value, fill = Survived)) +
+  geom_boxplot() +
+  facet_wrap(~variable, scales = "free") +
+  theme(axis.title = element_blank())
+
+titanic %>% 
+  group_by(Survived) %>% 
+  summarise(Age = mean(Age, na.rm = TRUE))
+anova(aov(Age ~ Survived, data = titanic)) 
+
+titanic %>% 
+  group_by(Survived) %>% 
+  summarise(Fare = mean(Fare))
+anova(aov(Fare ~ Survived, data = titanic))
+
+```
+
+
+```{r, include = FALSE}
+titanic %>% 
+  count(Embarked)
+titanic %>% 
+  count(Pclass)
+titanic %>% 
+  count(Sex)
+```
+
+
+```{r include = FALSE}
+rate_f <- titanic %>% 
+  group_by(Sex) %>% 
+  summarise(mean = mean(Survived)) %>% 
+  filter(Sex == "female") %>% 
+  select(mean) %>% 
+  as_vector()
+
+rate_m <- titanic %>% 
+  group_by(Sex) %>% 
+  summarise(mean = mean(Survived)) %>% 
+  filter(Sex == "male") %>% 
+  select(mean) %>% 
+  as_vector()
+```
+
+Passafiere der ersten Klasse überlebten deutlich häufiger als die Passagiere der zweiten bzw. dritten Klasse. Am deutlichsten ist der Unterschied der Überlebensrate zwischen Männern und Frauen. Während Frauen zu `r scales::percent(rate_f, accuracy = 0.01)` überlebten, waren es unter den männlichen Passagieren nur `r scales::percent(rate_m, accuracy = 0.01)`.
+
+```{r}
+
+titanic %>% 
+  select(Embarked, Sex, Pclass, Survived) %>% 
+  filter(Embarked != "NA") %>% 
+  mutate_at(vars(Embarked, Sex, Pclass), as.factor) %>% 
+  pivot_longer(-Survived, names_to = "variable", values_to = "value") %>% 
+  group_by(variable, value) %>% 
+  summarise(mean = mean(Survived, na.rm = T)) %>% 
+  mutate(variable = factor(variable)) %>% 
+  ggplot(aes(value, mean)) +
+  geom_bar(stat = "identity", na.rm = T) +
+  facet_grid(~variable, scale = "free_x", space = "free")
+
+```
+
+Die numerischen Prädiktoren weisen keine erhöhten Korrelationen untereinander auf. Dennoch werden wir zur Sicherheit vor der Modellierung im Schritt *recipe* einen Algorithmus auf die Daten anwenden, der Prädiktoren mit zu großer absoluter Korrelation mit anderen Prädiktoren entfernt. 
+
+```{r Collinearity of numeric variables}
+
+titanic %>% 
+  select(Age, Fare, Parch, SibSp, Pclass) %>% 
+  na.omit() %>% 
+  cor() %>% 
+  corrplot::corrplot.mixed()
+
+```
+
+Als nächstes betrachten wir die Verteilungen der Prädiktorvariablen. Zu schiefe Verteilungen können bei der logistischen Regression zu Problemen führen.
+
+```{r Distribution of Predictors: Skewness}
+
+titanic %>% 
+  select(Age, Fare, SibSp, Parch) %>%
+  pivot_longer(1:4, names_to = "variable", values_to = "value") %>% 
+  ggplot(aes(value)) +
+  geom_histogram() +
+  facet_wrap(~variable, scales = "free")
+
+```
+
+Insbesondere die Variable *Fare* weist eine enorm rechtsschiefe Verteilung auf. Deshalb werden wir vor der Modellierung die Yeo-Johnson Transformation anwenden, um die Verteilung von *Fare* symmetrischer zu machen.
+
+Die Variablen mit Typ *character* haben teilweise sehr viele verschiedene Werte. Mit den Variablen *Name* und *Ticket* sind die jeweiligen Passagiere nahezu eindeutig identifizierbar. Um ein Overfitting zu vermeiden, werden *Name* und *Ticket* deshalb nicht zur Modellierung benutzt.
+
+```{r}
+titanic %>% 
+  select_if(is.character) %>% 
+  map(unique) %>% 
+  map_df(length)
+```
+
+
+```{r, include = FALSE}
+na_prop_cabin <- titanic %>% 
+  count(Cabin) %>% 
+  mutate(prop = n / sum(n)) %>% 
+  arrange(desc(prop)) %>% 
+  slice_head(n = 1) %>% 
+  select(prop) %>% 
+  as_vector()
+```
+
+Die Variable *Cabin* enthält zu `r scales::percent(na_prop_cabin, accuracy = 0.01)` fehlende Werte (NAs). Aus diesem Grund wird auch diese Variable nicht zur Modellierung verwendet.
+
+```{r}
+titanic %>% 
+  count(Cabin) %>% 
+  arrange(desc(n)) %>% 
+  head()
+```
+
+Insegesamt werden also *Cabin*, *Name* und *Ticket* aus dem Datensatz entfernt.
+
+```{r}
+titanic <- titanic %>%
+  select(-Cabin, -Name, -Ticket)
+```
+
+Neben der bereits entfernten Variablen *Cabin* weisen noch zwei weitere Variablen fehlende Werte auf.
+
+```{r, Find Missings}
+summary(titanic)
+
+map(titanic, is.na) %>% 
+  map(sum)
+```
+
+```{r, include = FALSE}
+na_age <- is.na(titanic$Age) %>% sum()
+na_embarked <- is.na(titanic$Embarked) %>% sum()
+```
+
+Die Variable *Age* hat `r na_age` Observationen mit fehlendem Wert. Bei Variablen des Typs *character* sind fehlende Werte durch bloßen Aufruf der Funktion *summary()* nicht erkennbar. Durch zweifachen Aufruf der Funktion *map()* können alle verbleibenden Variablen mit fehlenden Werten identifiziert werden. Die Variable *Embarked* besitzt `r na_embarked` fehlende Werte. Im Schritt *recipe* werden die fehlenden Werte der Variablen *Age* und *Embarked* mithilfe von *Bagged Trees* anhand der Ausprägungen der anderen Variablen des jeweiligen Passagiers geschätz.
+
+Bevor wir mit der Modellierung beginnen, wird der Datensatz *titanic* in den Trainingsdatensatz *titanic_train* und den Testdatensatz *titanic_test* aufgesplittet. Dabei wird *Stratified Sampling* verwendet, um zu erreichen, dass die Verteilung von Überlebenden und Verstorbenen in beiden Datensätzen etwa gleich groß ist. 
+
+```{r Split}
+set.seed(1234)
+titanic_split <- initial_split(titanic, strata = Survived)
+titanic_train <- training(titanic_split)
+titanic_test <- testing(titanic_split)
+```
+
+Insgesamt haben wir also drei Datensätze: Den Trainingsdatensatz *titanic_train* an dem wir mit 10-fold Cross Validation die Werte der jeweiligen Hyperparameter der Modelle bestimmen. Der Testdatensatz *titanic_test* andem wir die Performance des durch Cross Validation gefundenen besten Modells auf einem, dem Modell unbekannten, Datensatz testen. Und den Datensatz *titanic_holdout*, bei dem wir nicht wissen, ob die Passagiere überlebt haben oder nicht und für den wir diese Werte im Rahmen der Kaggle Competition prognostizieren müssen.
+
+## Modellierung
+
+Die Modellierung mit *tidymodels* kann in folgende Schritte unterteilt werden. Zunächst wird ein sogenanntes *Rezept* erstellt, dass alle Pre-Processing Schritte wie Imputation und Transformationen von Variablen umfasst. Danach wird die sogenannte Modellspezifikation vorgenommen. Danach werden *Rezept* und *Modellspezifikation* im sogenannten *Workflow* zusammengefasst. Dieser Workflow wird dann genutzt, um dasHyperparametertuning, die Validierung des besten Modells und die abschließende Prognose für die Competition zu erstellen.
+
+### Random Forest
+
+Zunächst wird mit der Funktion *recipe()* festgelegt, welche Pre-Processing Schritte durchzuführen sind. Hier wird umgesetzt, was wie im Rahmen der explorativen Datenanalysen herausgefunden haben. *PClass* und *Survived* werden zu Faktorvariablen umgewandelt. Fehlende Werte der Variablen *Age* und *Embarked* werden per *Bagging* geschätzt und auf die Variable *Fare* wird die Yeo-Johnson Transformation angewendet.
+
+```{r Recipe}
+
+titanic_rec <- recipe(Survived ~ ., data = titanic_train) %>%
+  update_role(PassengerId, new_role = "ID") %>% 
+  step_mutate(Pclass = factor(Pclass, labels = c("first", "second", "third")) %>% 
+                fct_rev()) %>% 
+  step_mutate(Survived = factor(Survived)) %>% 
+  step_bagimpute(Age, Embarked) %>%
+  step_YeoJohnson(Fare) %>%  
+  #step_dummy(Pclass, Embarked, Sex) %>% 
+  prep()
+```
+
+Um zu überprüfen, welche Auswirkung die Yep-Johnson Transformation auf die Verteilung der Variablen *Fare* hat, betrachten wir folgende Grafik. Die Verteilung ist immer noch rechtsschief, aber die Schiefe wurde deutlich reduziert.
+
+```{r}
+bake(titanic_rec, new_data = titanic) %>% 
+  select(Fare) %>% 
+  mutate(Fare_original = titanic$Fare) %>% 
+  pivot_longer(1:2, names_to = "variable", values_to = "values") %>% 
+  mutate(variable = factor(variable)) %>% 
+  ggplot(aes(x = values, fill = variable)) +
+  geom_histogram() +
+  facet_grid(~variable, scales = "free") +
+  theme(legend.position = "none")
+  
+```
+
+Im nächsten SChritt wird das Modell spezifiziert. Wir wählen ein Random Forest Modell zur Klassifizierung, welches als Engine das Paket *ranger* verwendet. Die Hyperparameter *mtry*, *trees* und *min_n* erhalten Platzhalter, da sie erst noch im nächsten Schritt bestimmt werden. 
+
+```{r}
+
+rf_spec <- rand_forest(
+  mode = "classification",
+  mtry = tune(),
+  trees = tune(),
+  min_n = tune()) %>% 
+  set_engine("ranger", importance = "impurity")
+
+```
+
+Das angefertigte Rezept und die Modellspezifikation werden im sogenannten Workflow zusammengefasst.
+
+```{r}
+
+rf_wflow <- workflow() %>% 
+  add_recipe(titanic_rec) %>% 
+  add_model(rf_spec)
+
+```
+
+Zur Durchführung des Hyperparametertuning werden 10 Folds aus dem Trainingsdatensatz gebildet, die jeweils in Analyseset und Assessmentset unterteilt sind. Je Fold wird das Analyseset zum Trainng des Modells genutzt, während anhand des Assessmentsets die Performance bestimmt wird. Auch hier nutzen wir *Stratified Sampling*.
+
+```{r}
+set.seed(1234)
+titanic_train_folds <- vfold_cv(titanic_train, strata = Survived)
+titanic_train_folds 
+```
+
+Wir bilden ein Grid, dass alle Kombinationen aus den Werten der Hyperparameter enthält. Wir versuchen 7 verschiedene Werte für die Anzahl der pro Split des jeweiligen Decision Trees verwendeten Prädiktoren (*mtry*), 5 verschiedene Werte für die Anzahl der pro Random Forest verwendeten Decision Trees (*trees*) und 8 verschiedene Werte für die minimale Anzahl an Observationen die in einem Knoten eines Decision Trees notwendig ist, um einen Split dieses Knotens in Erwägung zu ziehen. Die Spanne der betrachteten Werte für *mtry* wird auf 1 bis 7 festgelegt.
+
+```{r}
+rf_param <- parameters(rf_spec) %>% 
+  update(mtry = mtry(range = c(1, 7))) %>% 
+  finalize(x = titanic_train %>% select(-Survived))
+
+grid_rf <- grid_regular(rf_param, levels = c(mtry = 7, trees = 5, min_n = 8))
+
+grid_rf %>% 
+  head() %>% 
+  knitr::kable()
+```
+
+Insgesamt erhalten wir 280 Kombinationsmöglichkeiten für die Hyperparameter. Für jede dieser Kombinationen wird pro Fold ein Random Forest mit jeweils bis zu 2000 Decision Trees trainiert. Das ergibt insgesamt 2800 Random Forests. Um die Zeit zu reduzieren, die für das Trainieren all dieser Random Forests bzw. Decision Trees notwendig ist, verwenden wir *Parallel Processing*.
+
+```{r}
+all_cores <- parallel::detectCores(logical = FALSE) 
+doParallel::registerDoParallel(cores = all_cores)
+```
+
+In diesem Schritt findet das Training der 2800 Random Forests im Rahmen des Hyperparametertunings statt. Dazu wird der bereits definierte Workflow zusammen mit dem bereits spezifizierten Grid der zu testenden Parameterwerte und den gebildeten Folds in der Funktion *tune_grid* verwendet.
+
+```{r}
+
+tune_rf <- tune_grid(
+  rf_wflow,
+  resamples = titanic_train_folds,
+  grid = grid_rf,
+  control = control_grid(save_pred = T)
+)
+
+```
+
+Nachdem die Modelle trainiert wurden, visualisieren wir die Ergebnisse der Cross Validation. Als mögliche Werte für die Anzahl der verwendeten Trees pro Random Forest wurden die Werte 1, 500, 1000, 1500 und 2000 verwendet. Die Grafik zeigt, dass -wie zu erwarten- die am schlechtesten performenden Modelle solche sind, die nur aus einem Tree bestehen. Ob 500, 1000, 15000 oder 2000 Trees pro Random Forest verwendet werden, scheint keinen Unterschied zu machen. Die Modelle mit einer *Minimal Node Size* (*min_n*) von etwa 10 bis 20 scheinen die besten Ergebnisse für die Metrik *Accuracy* zu erzielen. Für die Metrik *Area under the Curve (AUC)* spielt die Wahl der Hyperparameter insgesamt keine große Rolle, solange man mindestens 500 Trees pro Random Forest verwendet.
+
+```{r}
+tune_rf %>% 
+  autoplot()
+```
+
+Für die Anzahl der pro Knoten betrachteten Prädiktoren scheint ein Wert von etwa 3 gut zu funktionieren, wenn man die Kurven für die Accuracy betrachtet. Dieser Eindruck wird durch die nachfolgende Grafik bestätigt.
+
+```{r}
+tune_rf %>% 
+  collect_metrics() %>%
+  filter(.metric == "accuracy" & trees != 1) %>% 
+  select(mean, mtry:min_n) %>% 
+  pivot_longer(mtry:min_n, 
+               names_to = "parameter",
+               values_to = "value") %>% 
+  ggplot(aes(value, mean, color = parameter)) +
+  geom_point() +
+  geom_smooth() +
+  facet_wrap(~parameter, scales = "free_x") +
+  labs(x = "",
+       y = "Accuracy")
+```
+
+Was die *Area under the Curve* betrifft, so hat *mtry* keinen wesentlichen Einfluss auf die ROC Kurve, solange mtry größer als 1 ist. Die Roc Kurven unterschieden sich für verschiedene Werte von *min_n* ebenfalls nur geringfügig. Die Anzahl der Bäume pro Random Forest spielt für den Verlauf der ROC Kurve keine Rolle, solange die Anzahl mindestens 500 beträgt.
+
+```{r, fig.show = "hold", out.width = "33%"}
+tune_rf %>% 
+  collect_predictions() %>% 
+  mutate(mtry = factor(mtry)) %>% 
+  group_by(mtry) %>% 
+  roc_curve(truth = Survived, .pred_1, event_level = "second") %>% 
+  ggplot(aes(x = 1- specificity, y = sensitivity, color = mtry)) +
+  geom_path() +
+  geom_abline(lty = 3, alpha = 0.6) +
+  coord_equal()
+
+
+tune_rf %>% 
+  collect_predictions() %>% 
+  mutate(min_n = factor(min_n)) %>% 
+  group_by(min_n) %>% 
+  roc_curve(truth = Survived, .pred_1, event_level = "second") %>% 
+  ggplot(aes(x = 1- specificity, y = sensitivity, color = min_n)) +
+  geom_path() +
+  coord_equal() +
+  geom_abline(lty = 3, alpha = 0.6) 
+
+  
+tune_rf %>% 
+  collect_predictions() %>% 
+  mutate(trees = factor(trees)) %>% 
+  group_by(trees) %>% 
+  roc_curve(truth = Survived, .pred_1, event_level = "second") %>% 
+  ggplot(aes(x = 1- specificity, y = sensitivity, color = trees)) +
+  geom_path() +
+  coord_equal() +
+  geom_abline(lty = 3, alpha = 0.6) 
+
+
+```
+
+Nachdem wir visuell untersucht haben, welche Hyperparameterwerte sinnvoll erscheinen, wählen wir nun auf analytischerem Weg die endgültigen Werte der Hyperparameter. Dazu verwenden wir als Metriken sowohl die durchschnittliche Accuracy über alle 10 Folds, als auch den Standardfehler der 10 Accuracy Werte pro Parameterkombination. Zwar möchten wir ein Modell mit möglichst hoher durchschnittlicher Accuracy, allerdings ist es auch wichtig, eine Parameterkombination zu wählen, die bei Anwendung auf verschiedenen Datensätzen keine allzu schwankende Performance liefert. Dies ist insbesondere unter dem Aspekt wichtig, dass wie bei der Kaggle Competition Prognosen für nur einen Datensatz liefern müssen bzw. können und nicht wie bei der Cross Validation sozusagen 10 Versuche pro Parameterkombination haben, wo nur der Durchscnittswert zählt. Dazu speichern wir jeweils die besten 20 Modelle gemäß *Accuracy* und die besten 20 Modelle gemäß dem *Standardfehler der Accuracywerte*. Anschließend führe ich einen *Semi Join* durch, um die Modelle zu erhalten, die unter den Top 20 der Modelle gemäß beider Metriken sind. Dieses Vorghehen liefert uns 6 Modelle. Da diese 6 Modelle sehr ähnliche Accuracywerte aufweisen, wählen wir als endgültiges Modell das Modell mit der geringsten Streuung. 
+
+```{r Select Best Hyperparameter Values}
+
+cv_rf <-tune_rf %>% 
+  collect_metrics()
+
+best_accuracy <- tune_rf %>% 
+  show_best(metric = "accuracy", n = 20)
+
+best_std <- cv_rf %>% 
+  filter(.metric == "accuracy") %>% 
+  arrange(std_err) %>% 
+  head(n = 20)
+
+# The Subset off Models that are both in the top 20 according to accuracy and also in the top 20 according to sd of accuracy
+best_params_top_6 <- best_accuracy %>% 
+  semi_join(best_std, by = c(".config"), keep = FALSE) %>% 
+  arrange(std_err)
+best_params_top_6 %>% 
+  knitr::kable()
+
+best_params <- best_params_top_6 %>% 
+  slice_head(n = 1) %>% 
+  select(mtry, trees, min_n, .config)
+```
+
+Somit verwenden wir sowohl zur Validierung am Testdatensatz als auch zur Prognose am Datensatz *titanic_holdout* die Parameterwerte:
+
+* mtry = 5
+* trees = 500
+* min_n = 18
+
+```{r Modeltest}
+# set.seed(1234)
+# 
+# last_rf_fit <- rf_wflow %>% 
+#   finalize_workflow(parameters = best_params) %>% 
+#   last_fit(split = titanic_split)
+# 
+# last_rf_fit %>% 
+#   collect_metrics()
+# 
+# last_rf_fit %>% 
+#   pluck(".workflow", 1) %>%   
+#   pull_workflow_fit() %>% 
+#   vip(num_features = 7)
+```
+

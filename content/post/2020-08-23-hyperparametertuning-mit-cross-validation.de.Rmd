@@ -159,7 +159,7 @@ test <- titanic %>%
 Wir spalten die Trainingsdaten *train* in *titanic_train* und *titanic_test* auf. *titanic_train* wird für das Parametertuning per Cross Validation verwendet. Mit *titanic_test* bewerten wir das anhand von *titanic_train* mit den besten Parameterwerten trainierte Modell. Die Accuracy, die wir beim Test an *titanic_test* erhalten, dient als Schätzung für die Accuracy, die bei Submission auf Kaggle zu erwarten ist.
 
 ```{r Split Train in titanic_train und titanic_test}
-set.seed(1234)
+set.seed(123)
 train_split <- caret::createDataPartition(train$Survived, p = 0.75, list = FALSE)
 titanic_train <- train[train_split,]
 titanic_test <- train[-train_split,]
@@ -171,14 +171,14 @@ titanic_test <- train[-train_split,]
 Beim Boosting wird jeder Decision Tree auf einer modifizierten Version der Trainingsdaten trainiert. Bei jedem der trainierten Decision Trees werden die Informationen der vorherigen Trees genutzt, indem die Residuals des vorherigen Trees als abhängige Variable genutzt werden. Somit legt jeder folgende Baum besonderes Gewicht auf die Observationen, die von dem vorherigen Baum schlecht vorhergesagt wurden. Wie schnell dieser Lernvorgang geschieht, wird durch den Hyperparameter *shrinkage* bestimmt. Weitere zu bestimmende Hyperparameter sind die Anzahl der Bäume *B* und die Anzahl der Splits pro Baum *d*. Die Hyperparameter  werden durch Cross Validation an *titanic_train* bestimmt. Zunächst wird für jeden Hyperparameter eine Sequenz möglicher Werte gebildet und ein Grid names *boosting_parameters* erstellt, das alle möglichen Kombinationen der Werte der verschiedenen Hyperparameter enthält. Anschließend bilde ich den Vektor *folds* der die Indizes enthält, die genutzt werden, um eine Observation innerhalb der Cross Validation entweder dem Training des jeweiligen Modells oder dem Assessment zuzordnen. Für die Implementierung der Cross Validation verwende ich zwei ineinander verschachtelte for-Schleifen. Die erste SChleife iteriert über alle Kombinationen der Hyperparameter, die zweite Schleife iteriert über alle k Stufen der Cross Validation. Jede der k Folds wird in einer der k Stufen einmal dem Assessment des Modells dienen und in den anderen k-1 Stufen zum Trainieren des Modells verwendet. 
 
 ```{r Boosting: Parametertuning an Trainingsset mit CV}
-ntrees <- seq(50, 200, 25)
-lambda <- c(0.001, 0.005, 0.01, 0.015, 0.02)
-n_splits <- seq(1, 4, 1)
+ntrees <- 1000
+lambda <- c(0.001, 0.005, 0.01, 0.015, 0.02, 0.05, 0.1, 0.15)
+n_splits <- seq(1, 10, 1)
 boosting_parameters <- expand_grid(ntrees, lambda, n_splits) 
 boosting_parameters <- boosting_parameters %>% 
   mutate(id = 1:nrow(boosting_parameters))
 
-set.seed(1234)
+set.seed(123)
 k <- 5
 folds <- sample(1:k, size = nrow(titanic_train), replace = TRUE)
 boosting_accuracy <- matrix(NA, nrow = k, ncol = nrow(boosting_parameters),
@@ -243,11 +243,9 @@ df_gather <- df %>%
   group_by(n_splits) %>% 
   mutate(mean_n_splits = mean(accuracy)) %>% 
   ungroup() %>% 
-  group_by(ntrees) %>% 
-  mutate(mean_ntrees = mean(accuracy)) %>% 
   gather(key = "parameter",
          value = "value",
-         -accuracy, - mean_lambda, - mean_n_splits, - mean_ntrees) 
+         lambda, n_splits) 
 
 df_gather %>% 
   filter(value > 0.001) %>% 
@@ -262,8 +260,8 @@ df_gather %>%
 ```{r Plot Boosting, include=F}
 df %>% 
   filter(lambda != 0.001) %>% 
-  ggplot(aes(x = ntrees, y = accuracy, color = lambda, size = n_splits)) +
-  geom_point(alpha = .3)
+  ggplot(aes(x = n_splits, y = accuracy, color = lambda)) +
+  geom_point()
 ```  
 
 Zur abschließenden Bewertung des Modells bewerten wir die Prognosen des  Modells mit den soeben gefundenen Hyperparametern an dem Datensatz *titanic_test*, der nicht an der Auswahl der Hyperparameter beteiligt war.
@@ -314,7 +312,7 @@ pred_boosting_binary_comp <- ifelse(pred_boosting_comp > 0.5, 1, 0)
 submission_df <- data.frame(PassengerId = PassengerId_submission,
                             Survived = pred_boosting_binary_comp)
 write_csv(submission_df,
-          path = "submission.csv")
+          path = "submission_boosting_test.csv")
 ```
 
 

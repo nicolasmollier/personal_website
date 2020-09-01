@@ -624,12 +624,7 @@ library(kableExtra)
 library(caret)
 library(gbm)
 library(scales)
-library(e1071)
-library(modelr)
-library(plotROC)
-library(randomForest)
-library(boot)
-library(mice)</code></pre>
+library(e1071)</code></pre>
 </div>
 <div id="load-the-data" class="section level2">
 <h2>Load the Data</h2>
@@ -712,21 +707,21 @@ test &lt;- titanic %&gt;%
   filter(!IsTrain) %&gt;%
   dplyr::select(-PassengerId, -IsTrain, -Name, -Ticket, -Cabin, -Survived)</code></pre>
 <p>Wir spalten die Trainingsdaten <em>train</em> in <em>titanic_train</em> und <em>titanic_test</em> auf. <em>titanic_train</em> wird für das Parametertuning per Cross Validation verwendet. Mit <em>titanic_test</em> bewerten wir das anhand von <em>titanic_train</em> mit den besten Parameterwerten trainierte Modell. Die Accuracy, die wir beim Test an <em>titanic_test</em> erhalten, dient als Schätzung für die Accuracy, die bei Submission auf Kaggle zu erwarten ist.</p>
-<pre class="r"><code>set.seed(1234)
+<pre class="r"><code>set.seed(123)
 train_split &lt;- caret::createDataPartition(train$Survived, p = 0.75, list = FALSE)
 titanic_train &lt;- train[train_split,]
 titanic_test &lt;- train[-train_split,]</code></pre>
 <div id="boosting" class="section level3">
 <h3>Boosting</h3>
 <p>Beim Boosting wird jeder Decision Tree auf einer modifizierten Version der Trainingsdaten trainiert. Bei jedem der trainierten Decision Trees werden die Informationen der vorherigen Trees genutzt, indem die Residuals des vorherigen Trees als abhängige Variable genutzt werden. Somit legt jeder folgende Baum besonderes Gewicht auf die Observationen, die von dem vorherigen Baum schlecht vorhergesagt wurden. Wie schnell dieser Lernvorgang geschieht, wird durch den Hyperparameter <em>shrinkage</em> bestimmt. Weitere zu bestimmende Hyperparameter sind die Anzahl der Bäume <em>B</em> und die Anzahl der Splits pro Baum <em>d</em>. Die Hyperparameter werden durch Cross Validation an <em>titanic_train</em> bestimmt. Zunächst wird für jeden Hyperparameter eine Sequenz möglicher Werte gebildet und ein Grid names <em>boosting_parameters</em> erstellt, das alle möglichen Kombinationen der Werte der verschiedenen Hyperparameter enthält. Anschließend bilde ich den Vektor <em>folds</em> der die Indizes enthält, die genutzt werden, um eine Observation innerhalb der Cross Validation entweder dem Training des jeweiligen Modells oder dem Assessment zuzordnen. Für die Implementierung der Cross Validation verwende ich zwei ineinander verschachtelte for-Schleifen. Die erste SChleife iteriert über alle Kombinationen der Hyperparameter, die zweite Schleife iteriert über alle k Stufen der Cross Validation. Jede der k Folds wird in einer der k Stufen einmal dem Assessment des Modells dienen und in den anderen k-1 Stufen zum Trainieren des Modells verwendet.</p>
-<pre class="r"><code>ntrees &lt;- seq(50, 200, 25)
-lambda &lt;- c(0.001, 0.005, 0.01, 0.015, 0.02)
-n_splits &lt;- seq(1, 4, 1)
+<pre class="r"><code>ntrees &lt;- 1000
+lambda &lt;- c(0.001, 0.005, 0.01, 0.015, 0.02, 0.05, 0.1, 0.15)
+n_splits &lt;- seq(1, 10, 1)
 boosting_parameters &lt;- expand_grid(ntrees, lambda, n_splits) 
 boosting_parameters &lt;- boosting_parameters %&gt;% 
   mutate(id = 1:nrow(boosting_parameters))
 
-set.seed(1234)
+set.seed(123)
 k &lt;- 5
 folds &lt;- sample(1:k, size = nrow(titanic_train), replace = TRUE)
 boosting_accuracy &lt;- matrix(NA, nrow = k, ncol = nrow(boosting_parameters),
@@ -770,7 +765,7 @@ best_comb_boosting &lt;- boosting_parameters[which.max(accuracy_mean),]</code></
 
 boosting_accuracy %&gt;% 
   custom_kable()</code></pre>
-<p>Die höchste Accuracy wird mit einem Modell erzielt, dass 200 Bäume mit je 4 Splits und einer Lernrate (shrinkage) von 0.02 verwendet. Alle Observationen, die eine prognostizierte Wahrscheinlichkeit von über 0.5 aufweisen, werden als <em>Überlebend</em> klassifiziert. Das Modell mit den gemäß Cross Validation besten Parameterwerten für <em>B</em>, <em>d</em> und <em>shrinkage</em> erzielt eine Cross Validation Accuracy von 84.37%.</p>
+<p>Die höchste Accuracy wird mit einem Modell erzielt, dass 1000 Bäume mit je 6 Splits und einer Lernrate (shrinkage) von 0.015 verwendet. Alle Observationen, die eine prognostizierte Wahrscheinlichkeit von über 0.5 aufweisen, werden als <em>Überlebend</em> klassifiziert. Das Modell mit den gemäß Cross Validation besten Parameterwerten für <em>B</em>, <em>d</em> und <em>shrinkage</em> erzielt eine Cross Validation Accuracy von 84.14%.</p>
 <p>Zur abschließenden Bewertung des Modells bewerten wir die Prognosen des Modells mit den soeben gefundenen Hyperparametern an dem Datensatz <em>titanic_test</em>, der nicht an der Auswahl der Hyperparameter beteiligt war.</p>
 <pre class="r"><code>ntree_best &lt;- best_comb_boosting[[&quot;ntrees&quot;]] 
 n_split_best &lt;- best_comb_boosting[[&quot;n_splits&quot;]]
@@ -794,7 +789,7 @@ conf_matrix &lt;- caret::confusionMatrix(data = pred_boosting_binary_titanic_tes
 
 accuracy &lt;- list()
 accuracy$boosting &lt;- conf_matrix$overall[&quot;Accuracy&quot;]</code></pre>
-<p>Die Schätzung der Accuracy beträgt 79.28%. Zum Schluss bestimmen wir mit dem Boosting Modell die Prognosen für den Testdatensatz, speichern sie als csv file ab und reichen sie anschließend auf Kaggle als Submission ein.</p>
+<p>Die Schätzung der Accuracy beträgt 78.38%. Zum Schluss bestimmen wir mit dem Boosting Modell die Prognosen für den Testdatensatz, speichern sie als csv file ab und reichen sie anschließend auf Kaggle als Submission ein.</p>
 <pre class="r"><code>train_boosting &lt;- train
 train_boosting$Survived &lt;- as.character(train_boosting$Survived)
 
@@ -812,12 +807,12 @@ pred_boosting_binary_comp &lt;- ifelse(pred_boosting_comp &gt; 0.5, 1, 0)
 submission_df &lt;- data.frame(PassengerId = PassengerId_submission,
                             Survived = pred_boosting_binary_comp)
 write_csv(submission_df,
-          path = &quot;submission.csv&quot;)</code></pre>
+          path = &quot;submission_boosting_test.csv&quot;)</code></pre>
 </div>
 </div>
 <div id="ergebnis" class="section level2">
 <h2>Ergebnis</h2>
-<p>Bei der Prognose des Testsets der Competition erzielt unser Boosting Modell mit shrinkage = 0.02, n.trees = 200 und interaction.depth = 4 eine Accuracy von 77%.</p>
+<p>Bei der Prognose des Testsets der Competition erzielt unser Boosting Modell mit shrinkage = 0.015, n.trees = 1000 und interaction.depth = 6 eine Accuracy von 77%.</p>
 </div>
 
     </div>

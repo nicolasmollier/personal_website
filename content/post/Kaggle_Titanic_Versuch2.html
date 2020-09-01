@@ -1,0 +1,419 @@
+---
+title: "Kaggle_Titanic_ML_2"
+author: "Nicolas Mollier"
+date: "8/29/2020"
+output: html_document
+---
+
+
+
+<pre class="r"><code>library(tidyverse)
+library(tidymodels)
+library(doParallel)
+library(vip)</code></pre>
+<pre class="r"><code>titanic &lt;- read_csv(&quot;train.csv&quot;)
+titanic_holdout &lt;- read_csv(&quot;test.csv&quot;)</code></pre>
+<p>Wir beginnen mit einer kurzen explorativen Datenanalyse. Dazu betrachten wir zunächst in welcher Beziehung die einzelnen Prädiktoren mit der zu erklärenden Variablen <em>Survived</em> stehen. Die erste Grafik zeigt inwieweit sich die Verteilungen der numerischen Varaiblen unterscheiden, je nachedm ob die jeweiligen Passageiere (Observationen) überlebt haben oder nicht. Die Überlebenden waren zwar signifikant, aber nicht deutlich jünger als die Verstorbenen. Die Überlebenden besaßen deutlich höherpreisige Tickets als die Verstorbenen.</p>
+<pre class="r"><code>glimpse(titanic)</code></pre>
+<pre><code>## Rows: 891
+## Columns: 12
+## $ PassengerId &lt;dbl&gt; 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17…
+## $ Survived    &lt;dbl&gt; 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 1, 0, …
+## $ Pclass      &lt;dbl&gt; 3, 1, 3, 1, 3, 3, 1, 3, 3, 2, 3, 1, 3, 3, 3, 2, 3, 2, 3, …
+## $ Name        &lt;chr&gt; &quot;Braund, Mr. Owen Harris&quot;, &quot;Cumings, Mrs. John Bradley (F…
+## $ Sex         &lt;chr&gt; &quot;male&quot;, &quot;female&quot;, &quot;female&quot;, &quot;female&quot;, &quot;male&quot;, &quot;male&quot;, &quot;ma…
+## $ Age         &lt;dbl&gt; 22, 38, 26, 35, 35, NA, 54, 2, 27, 14, 4, 58, 20, 39, 14,…
+## $ SibSp       &lt;dbl&gt; 1, 1, 0, 1, 0, 0, 0, 3, 0, 1, 1, 0, 0, 1, 0, 0, 4, 0, 1, …
+## $ Parch       &lt;dbl&gt; 0, 0, 0, 0, 0, 0, 0, 1, 2, 0, 1, 0, 0, 5, 0, 0, 1, 0, 0, …
+## $ Ticket      &lt;chr&gt; &quot;A/5 21171&quot;, &quot;PC 17599&quot;, &quot;STON/O2. 3101282&quot;, &quot;113803&quot;, &quot;3…
+## $ Fare        &lt;dbl&gt; 7.2500, 71.2833, 7.9250, 53.1000, 8.0500, 8.4583, 51.8625…
+## $ Cabin       &lt;chr&gt; NA, &quot;C85&quot;, NA, &quot;C123&quot;, NA, NA, &quot;E46&quot;, NA, NA, NA, &quot;G6&quot;, &quot;…
+## $ Embarked    &lt;chr&gt; &quot;S&quot;, &quot;C&quot;, &quot;S&quot;, &quot;S&quot;, &quot;S&quot;, &quot;Q&quot;, &quot;S&quot;, &quot;S&quot;, &quot;S&quot;, &quot;C&quot;, &quot;S&quot;, &quot;S…</code></pre>
+<pre class="r"><code># Relationship with Survival Rate
+
+titanic %&gt;% 
+  select(Age, Fare, Parch, SibSp, Survived) %&gt;% 
+  mutate(Survived = factor(Survived)) %&gt;% 
+  pivot_longer(-Survived, names_to = &quot;variable&quot;, values_to = &quot;value&quot;) %&gt;% 
+  ggplot(aes(x = Survived, y = value, fill = Survived)) +
+  geom_boxplot() +
+  facet_wrap(~variable, scales = &quot;free&quot;) +
+  theme(axis.title = element_blank())</code></pre>
+<p><img src="/post/Kaggle_Titanic_Versuch2_files/figure-html/EDA%201-1.png" width="672" /></p>
+<pre class="r"><code>titanic %&gt;% 
+  group_by(Survived) %&gt;% 
+  summarise(Age = mean(Age, na.rm = TRUE))</code></pre>
+<pre><code>## # A tibble: 2 x 2
+##   Survived   Age
+##      &lt;dbl&gt; &lt;dbl&gt;
+## 1        0  30.6
+## 2        1  28.3</code></pre>
+<pre class="r"><code>anova(aov(Age ~ Survived, data = titanic)) </code></pre>
+<pre><code>## Analysis of Variance Table
+## 
+## Response: Age
+##            Df Sum Sq Mean Sq F value  Pr(&gt;F)  
+## Survived    1    897  897.19  4.2712 0.03912 *
+## Residuals 712 149559  210.06                  
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1</code></pre>
+<pre class="r"><code>titanic %&gt;% 
+  group_by(Survived) %&gt;% 
+  summarise(Fare = mean(Fare))</code></pre>
+<pre><code>## # A tibble: 2 x 2
+##   Survived  Fare
+##      &lt;dbl&gt; &lt;dbl&gt;
+## 1        0  22.1
+## 2        1  48.4</code></pre>
+<pre class="r"><code>anova(aov(Fare ~ Survived, data = titanic))</code></pre>
+<pre><code>## Analysis of Variance Table
+## 
+## Response: Fare
+##            Df  Sum Sq Mean Sq F value   Pr(&gt;F)    
+## Survived    1  145509  145509  63.031 6.12e-15 ***
+## Residuals 889 2052290    2309                     
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1</code></pre>
+<p>Passafiere der ersten Klasse überlebten deutlich häufiger als die Passagiere der zweiten bzw. dritten Klasse. Am deutlichsten ist der Unterschied der Überlebensrate zwischen Männern und Frauen. Während Frauen zu 74.20% überlebten, waren es unter den männlichen Passagieren nur 18.89%.</p>
+<pre class="r"><code>titanic %&gt;% 
+  select(Embarked, Sex, Pclass, Survived) %&gt;% 
+  filter(Embarked != &quot;NA&quot;) %&gt;% 
+  mutate_at(vars(Embarked, Sex, Pclass), as.factor) %&gt;% 
+  pivot_longer(-Survived, names_to = &quot;variable&quot;, values_to = &quot;value&quot;) %&gt;% 
+  group_by(variable, value) %&gt;% 
+  summarise(mean = mean(Survived, na.rm = T)) %&gt;% 
+  mutate(variable = factor(variable)) %&gt;% 
+  ggplot(aes(value, mean)) +
+  geom_bar(stat = &quot;identity&quot;, na.rm = T) +
+  facet_grid(~variable, scale = &quot;free_x&quot;, space = &quot;free&quot;)</code></pre>
+<p><img src="/post/Kaggle_Titanic_Versuch2_files/figure-html/unnamed-chunk-3-1.png" width="672" /></p>
+<p>Die numerischen Prädiktoren weisen keine erhöhten Korrelationen untereinander auf. Dennoch werden wir zur Sicherheit vor der Modellierung im Schritt <em>recipe</em> einen Algorithmus auf die Daten anwenden, der Prädiktoren mit zu großer absoluter Korrelation mit anderen Prädiktoren entfernt.</p>
+<pre class="r"><code>titanic %&gt;% 
+  select(Age, Fare, Parch, SibSp, Pclass) %&gt;% 
+  na.omit() %&gt;% 
+  cor() %&gt;% 
+  corrplot::corrplot.mixed()</code></pre>
+<p><img src="/post/Kaggle_Titanic_Versuch2_files/figure-html/Collinearity%20of%20numeric%20variables-1.png" width="672" /></p>
+<p>Als nächstes betrachten wir die Verteilungen der Prädiktorvariablen. Zu schiefe Verteilungen können bei der logistischen Regression zu Problemen führen.</p>
+<pre class="r"><code>titanic %&gt;% 
+  select(Age, Fare, SibSp, Parch) %&gt;%
+  pivot_longer(1:4, names_to = &quot;variable&quot;, values_to = &quot;value&quot;) %&gt;% 
+  ggplot(aes(value)) +
+  geom_histogram() +
+  facet_wrap(~variable, scales = &quot;free&quot;)</code></pre>
+<p><img src="/post/Kaggle_Titanic_Versuch2_files/figure-html/Distribution%20of%20Predictors:%20Skewness-1.png" width="672" /></p>
+<p>Insbesondere die Variable <em>Fare</em> weist eine enorm rechtsschiefe Verteilung auf. Deshalb werden wir vor der Modellierung die Yeo-Johnson Transformation anwenden, um die Verteilung von <em>Fare</em> symmetrischer zu machen.</p>
+<p>Die Variablen mit Typ <em>character</em> haben teilweise sehr viele verschiedene Werte. Mit den Variablen <em>Name</em> und <em>Ticket</em> sind die jeweiligen Passagiere nahezu eindeutig identifizierbar. Um ein Overfitting zu vermeiden, werden <em>Name</em> und <em>Ticket</em> deshalb nicht zur Modellierung benutzt.</p>
+<pre class="r"><code>titanic %&gt;% 
+  select_if(is.character) %&gt;% 
+  map(unique) %&gt;% 
+  map_df(length)</code></pre>
+<pre><code>## # A tibble: 1 x 5
+##    Name   Sex Ticket Cabin Embarked
+##   &lt;int&gt; &lt;int&gt;  &lt;int&gt; &lt;int&gt;    &lt;int&gt;
+## 1   891     2    681   148        4</code></pre>
+<p>Die Variable <em>Cabin</em> enthält zu 77.10% fehlende Werte (NAs). Aus diesem Grund wird auch diese Variable nicht zur Modellierung verwendet.</p>
+<pre class="r"><code>titanic %&gt;% 
+  count(Cabin) %&gt;% 
+  arrange(desc(n)) %&gt;% 
+  head()</code></pre>
+<pre><code>## # A tibble: 6 x 2
+##   Cabin           n
+##   &lt;chr&gt;       &lt;int&gt;
+## 1 &lt;NA&gt;          687
+## 2 B96 B98         4
+## 3 C23 C25 C27     4
+## 4 G6              4
+## 5 C22 C26         3
+## 6 D               3</code></pre>
+<p>Insegesamt werden also <em>Cabin</em>, <em>Name</em> und <em>Ticket</em> aus dem Datensatz entfernt.</p>
+<pre class="r"><code>titanic &lt;- titanic %&gt;%
+  select(-Cabin, -Name, -Ticket)</code></pre>
+<p>Neben der bereits entfernten Variablen <em>Cabin</em> weisen noch zwei weitere Variablen fehlende Werte auf.</p>
+<pre class="r"><code>summary(titanic)</code></pre>
+<pre><code>##   PassengerId       Survived          Pclass          Sex           
+##  Min.   :  1.0   Min.   :0.0000   Min.   :1.000   Length:891        
+##  1st Qu.:223.5   1st Qu.:0.0000   1st Qu.:2.000   Class :character  
+##  Median :446.0   Median :0.0000   Median :3.000   Mode  :character  
+##  Mean   :446.0   Mean   :0.3838   Mean   :2.309                     
+##  3rd Qu.:668.5   3rd Qu.:1.0000   3rd Qu.:3.000                     
+##  Max.   :891.0   Max.   :1.0000   Max.   :3.000                     
+##                                                                     
+##       Age            SibSp           Parch             Fare       
+##  Min.   : 0.42   Min.   :0.000   Min.   :0.0000   Min.   :  0.00  
+##  1st Qu.:20.12   1st Qu.:0.000   1st Qu.:0.0000   1st Qu.:  7.91  
+##  Median :28.00   Median :0.000   Median :0.0000   Median : 14.45  
+##  Mean   :29.70   Mean   :0.523   Mean   :0.3816   Mean   : 32.20  
+##  3rd Qu.:38.00   3rd Qu.:1.000   3rd Qu.:0.0000   3rd Qu.: 31.00  
+##  Max.   :80.00   Max.   :8.000   Max.   :6.0000   Max.   :512.33  
+##  NA&#39;s   :177                                                      
+##    Embarked        
+##  Length:891        
+##  Class :character  
+##  Mode  :character  
+##                    
+##                    
+##                    
+## </code></pre>
+<pre class="r"><code>map(titanic, is.na) %&gt;% 
+  map(sum)</code></pre>
+<pre><code>## $PassengerId
+## [1] 0
+## 
+## $Survived
+## [1] 0
+## 
+## $Pclass
+## [1] 0
+## 
+## $Sex
+## [1] 0
+## 
+## $Age
+## [1] 177
+## 
+## $SibSp
+## [1] 0
+## 
+## $Parch
+## [1] 0
+## 
+## $Fare
+## [1] 0
+## 
+## $Embarked
+## [1] 2</code></pre>
+<p>Die Variable <em>Age</em> hat 177 Observationen mit fehlendem Wert. Bei Variablen des Typs <em>character</em> sind fehlende Werte durch bloßen Aufruf der Funktion <em>summary()</em> nicht erkennbar. Durch zweifachen Aufruf der Funktion <em>map()</em> können alle verbleibenden Variablen mit fehlenden Werten identifiziert werden. Die Variable <em>Embarked</em> besitzt 2 fehlende Werte. Im Schritt <em>recipe</em> werden die fehlenden Werte der Variablen <em>Age</em> und <em>Embarked</em> mithilfe von <em>Bagged Trees</em> anhand der Ausprägungen der anderen Variablen des jeweiligen Passagiers geschätz.</p>
+<p>Bevor wir mit der Modellierung beginnen, wird der Datensatz <em>titanic</em> in den Trainingsdatensatz <em>titanic_train</em> und den Testdatensatz <em>titanic_test</em> aufgesplittet. Dabei wird <em>Stratified Sampling</em> verwendet, um zu erreichen, dass die Verteilung von Überlebenden und Verstorbenen in beiden Datensätzen etwa gleich groß ist.</p>
+<pre class="r"><code>set.seed(1234)
+titanic_split &lt;- initial_split(titanic, strata = Survived)
+titanic_train &lt;- training(titanic_split)
+titanic_test &lt;- testing(titanic_split)</code></pre>
+<p>Insgesamt haben wir also drei Datensätze: Den Trainingsdatensatz <em>titanic_train</em> an dem wir mit 10-fold Cross Validation die Werte der jeweiligen Hyperparameter der Modelle bestimmen. Der Testdatensatz <em>titanic_test</em> andem wir die Performance des durch Cross Validation gefundenen besten Modells auf einem, dem Modell unbekannten, Datensatz testen. Und den Datensatz <em>titanic_holdout</em>, bei dem wir nicht wissen, ob die Passagiere überlebt haben oder nicht und für den wir diese Werte im Rahmen der Kaggle Competition prognostizieren müssen.</p>
+<div id="modellierung" class="section level2">
+<h2>Modellierung</h2>
+<p>Die Modellierung mit <em>tidymodels</em> kann in folgende Schritte unterteilt werden. Zunächst wird ein sogenanntes <em>Rezept</em> erstellt, dass alle Pre-Processing Schritte wie Imputation und Transformationen von Variablen umfasst. Danach wird die sogenannte Modellspezifikation vorgenommen. Danach werden <em>Rezept</em> und <em>Modellspezifikation</em> im sogenannten <em>Workflow</em> zusammengefasst. Dieser Workflow wird dann genutzt, um dasHyperparametertuning, die Validierung des besten Modells und die abschließende Prognose für die Competition zu erstellen.</p>
+<div id="random-forest" class="section level3">
+<h3>Random Forest</h3>
+<p>Zunächst wird mit der Funktion <em>recipe()</em> festgelegt, welche Pre-Processing Schritte durchzuführen sind. Hier wird umgesetzt, was wie im Rahmen der explorativen Datenanalysen herausgefunden haben. <em>PClass</em> und <em>Survived</em> werden zu Faktorvariablen umgewandelt. Fehlende Werte der Variablen <em>Age</em> und <em>Embarked</em> werden per <em>Bagging</em> geschätzt und auf die Variable <em>Fare</em> wird die Yeo-Johnson Transformation angewendet.</p>
+<pre class="r"><code>titanic_rec &lt;- recipe(Survived ~ ., data = titanic_train) %&gt;%
+  update_role(PassengerId, new_role = &quot;ID&quot;) %&gt;% 
+  step_mutate(Pclass = factor(Pclass, labels = c(&quot;first&quot;, &quot;second&quot;, &quot;third&quot;)) %&gt;% 
+                fct_rev()) %&gt;% 
+  step_mutate(Survived = factor(Survived)) %&gt;% 
+  step_bagimpute(Age, Embarked) %&gt;%
+  step_YeoJohnson(Fare) %&gt;%  
+  #step_dummy(Pclass, Embarked, Sex) %&gt;% 
+  prep()</code></pre>
+<p>Um zu überprüfen, welche Auswirkung die Yep-Johnson Transformation auf die Verteilung der Variablen <em>Fare</em> hat, betrachten wir folgende Grafik. Die Verteilung ist immer noch rechtsschief, aber die Schiefe wurde deutlich reduziert.</p>
+<pre class="r"><code>bake(titanic_rec, new_data = titanic) %&gt;% 
+  select(Fare) %&gt;% 
+  mutate(Fare_original = titanic$Fare) %&gt;% 
+  pivot_longer(1:2, names_to = &quot;variable&quot;, values_to = &quot;values&quot;) %&gt;% 
+  mutate(variable = factor(variable)) %&gt;% 
+  ggplot(aes(x = values, fill = variable)) +
+  geom_histogram() +
+  facet_grid(~variable, scales = &quot;free&quot;) +
+  theme(legend.position = &quot;none&quot;)</code></pre>
+<p><img src="/post/Kaggle_Titanic_Versuch2_files/figure-html/unnamed-chunk-9-1.png" width="672" /></p>
+<p>Im nächsten SChritt wird das Modell spezifiziert. Wir wählen ein Random Forest Modell zur Klassifizierung, welches als Engine das Paket <em>ranger</em> verwendet. Die Hyperparameter <em>mtry</em>, <em>trees</em> und <em>min_n</em> erhalten Platzhalter, da sie erst noch im nächsten Schritt bestimmt werden.</p>
+<pre class="r"><code>rf_spec &lt;- rand_forest(
+  mode = &quot;classification&quot;,
+  mtry = tune(),
+  trees = tune(),
+  min_n = tune()) %&gt;% 
+  set_engine(&quot;ranger&quot;, importance = &quot;impurity&quot;)</code></pre>
+<p>Das angefertigte Rezept und die Modellspezifikation werden im sogenannten Workflow zusammengefasst.</p>
+<pre class="r"><code>rf_wflow &lt;- workflow() %&gt;% 
+  add_recipe(titanic_rec) %&gt;% 
+  add_model(rf_spec)</code></pre>
+<p>Zur Durchführung des Hyperparametertuning werden 10 Folds aus dem Trainingsdatensatz gebildet, die jeweils in Analyseset und Assessmentset unterteilt sind. Je Fold wird das Analyseset zum Trainng des Modells genutzt, während anhand des Assessmentsets die Performance bestimmt wird. Auch hier nutzen wir <em>Stratified Sampling</em>.</p>
+<pre class="r"><code>set.seed(1234)
+titanic_train_folds &lt;- vfold_cv(titanic_train, strata = Survived)
+titanic_train_folds </code></pre>
+<pre><code>## #  10-fold cross-validation using stratification 
+## # A tibble: 10 x 2
+##    splits           id    
+##    &lt;list&gt;           &lt;chr&gt; 
+##  1 &lt;split [601/68]&gt; Fold01
+##  2 &lt;split [601/68]&gt; Fold02
+##  3 &lt;split [602/67]&gt; Fold03
+##  4 &lt;split [602/67]&gt; Fold04
+##  5 &lt;split [602/67]&gt; Fold05
+##  6 &lt;split [602/67]&gt; Fold06
+##  7 &lt;split [602/67]&gt; Fold07
+##  8 &lt;split [603/66]&gt; Fold08
+##  9 &lt;split [603/66]&gt; Fold09
+## 10 &lt;split [603/66]&gt; Fold10</code></pre>
+<p>Wir bilden ein Grid, dass alle Kombinationen aus den Werten der Hyperparameter enthält. Wir versuchen 7 verschiedene Werte für die Anzahl der pro Split des jeweiligen Decision Trees verwendeten Prädiktoren (<em>mtry</em>), 5 verschiedene Werte für die Anzahl der pro Random Forest verwendeten Decision Trees (<em>trees</em>) und 8 verschiedene Werte für die minimale Anzahl an Observationen die in einem Knoten eines Decision Trees notwendig ist, um einen Split dieses Knotens in Erwägung zu ziehen. Die Spanne der betrachteten Werte für <em>mtry</em> wird auf 1 bis 7 festgelegt.</p>
+<pre class="r"><code>rf_param &lt;- parameters(rf_spec) %&gt;% 
+  update(mtry = mtry(range = c(1, 7))) %&gt;% 
+  finalize(x = titanic_train %&gt;% select(-Survived))
+
+grid_rf &lt;- grid_regular(rf_param, levels = c(mtry = 7, trees = 5, min_n = 8))
+
+grid_rf %&gt;% 
+  head() %&gt;% 
+  knitr::kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="right">mtry</th>
+<th align="right">trees</th>
+<th align="right">min_n</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="right">1</td>
+<td align="right">1</td>
+<td align="right">2</td>
+</tr>
+<tr class="even">
+<td align="right">2</td>
+<td align="right">1</td>
+<td align="right">2</td>
+</tr>
+<tr class="odd">
+<td align="right">3</td>
+<td align="right">1</td>
+<td align="right">2</td>
+</tr>
+<tr class="even">
+<td align="right">4</td>
+<td align="right">1</td>
+<td align="right">2</td>
+</tr>
+<tr class="odd">
+<td align="right">5</td>
+<td align="right">1</td>
+<td align="right">2</td>
+</tr>
+<tr class="even">
+<td align="right">6</td>
+<td align="right">1</td>
+<td align="right">2</td>
+</tr>
+</tbody>
+</table>
+<p>Insgesamt erhalten wir 280 Kombinationsmöglichkeiten für die Hyperparameter. Für jede dieser Kombinationen wird pro Fold ein Random Forest mit jeweils bis zu 2000 Decision Trees trainiert. Das ergibt insgesamt 2800 Random Forests. Um die Zeit zu reduzieren, die für das Trainieren all dieser Random Forests bzw. Decision Trees notwendig ist, verwenden wir <em>Parallel Processing</em>.</p>
+<pre class="r"><code>all_cores &lt;- parallel::detectCores(logical = FALSE) 
+doParallel::registerDoParallel(cores = all_cores)</code></pre>
+<p>In diesem Schritt findet das Training der 2800 Random Forests im Rahmen des Hyperparametertunings statt. Dazu wird der bereits definierte Workflow zusammen mit dem bereits spezifizierten Grid der zu testenden Parameterwerte und den gebildeten Folds in der Funktion <em>tune_grid</em> verwendet.</p>
+<pre class="r"><code>tune_rf &lt;- tune_grid(
+  rf_wflow,
+  resamples = titanic_train_folds,
+  grid = grid_rf,
+  control = control_grid(save_pred = T)
+)</code></pre>
+<p>Nachdem die Modelle trainiert wurden, visualisieren wir die Ergebnisse der Cross Validation. Als mögliche Werte für die Anzahl der verwendeten Trees pro Random Forest wurden die Werte 1, 500, 1000, 1500 und 2000 verwendet. Die Grafik zeigt, dass -wie zu erwarten- die am schlechtesten performenden Modelle solche sind, die nur aus einem Tree bestehen. Ob 500, 1000, 15000 oder 2000 Trees pro Random Forest verwendet werden, scheint keinen Unterschied zu machen. Die Modelle mit einer <em>Minimal Node Size</em> (<em>min_n</em>) von etwa 10 bis 20 scheinen die besten Ergebnisse für die Metrik <em>Accuracy</em> zu erzielen. Für die Metrik <em>Area under the Curve (AUC)</em> spielt die Wahl der Hyperparameter insgesamt keine große Rolle, solange man mindestens 500 Trees pro Random Forest verwendet.</p>
+<pre class="r"><code>tune_rf %&gt;% 
+  autoplot()</code></pre>
+<p><img src="/post/Kaggle_Titanic_Versuch2_files/figure-html/unnamed-chunk-16-1.png" width="672" /></p>
+<p>Für die Anzahl der pro Knoten betrachteten Prädiktoren scheint ein Wert von etwa 3 gut zu funktionieren, wenn man die Kurven für die Accuracy betrachtet. Dieser Eindruck wird durch die nachfolgende Grafik bestätigt.</p>
+<pre class="r"><code>tune_rf %&gt;% 
+  collect_metrics() %&gt;%
+  filter(.metric == &quot;accuracy&quot; &amp; trees != 1) %&gt;% 
+  select(mean, mtry:min_n) %&gt;% 
+  pivot_longer(mtry:min_n, 
+               names_to = &quot;parameter&quot;,
+               values_to = &quot;value&quot;) %&gt;% 
+  ggplot(aes(value, mean, color = parameter)) +
+  geom_point() +
+  geom_smooth() +
+  facet_wrap(~parameter, scales = &quot;free_x&quot;) +
+  labs(x = &quot;&quot;,
+       y = &quot;Accuracy&quot;)</code></pre>
+<p><img src="/post/Kaggle_Titanic_Versuch2_files/figure-html/unnamed-chunk-17-1.png" width="672" /></p>
+<p>Was die <em>Area under the Curve</em> betrifft, so hat <em>mtry</em> keinen wesentlichen Einfluss auf die ROC Kurve, solange mtry größer als 1 ist. Die Roc Kurven unterschieden sich für verschiedene Werte von <em>min_n</em> ebenfalls nur geringfügig. Die Anzahl der Bäume pro Random Forest spielt für den Verlauf der ROC Kurve keine Rolle, solange die Anzahl mindestens 500 beträgt.</p>
+<pre class="r"><code>tune_rf %&gt;% 
+  collect_predictions() %&gt;% 
+  mutate(mtry = factor(mtry)) %&gt;% 
+  group_by(mtry) %&gt;% 
+  roc_curve(truth = Survived, .pred_1, event_level = &quot;second&quot;) %&gt;% 
+  ggplot(aes(x = 1- specificity, y = sensitivity, color = mtry)) +
+  geom_path() +
+  geom_abline(lty = 3, alpha = 0.6) +
+  coord_equal()
+
+
+tune_rf %&gt;% 
+  collect_predictions() %&gt;% 
+  mutate(min_n = factor(min_n)) %&gt;% 
+  group_by(min_n) %&gt;% 
+  roc_curve(truth = Survived, .pred_1, event_level = &quot;second&quot;) %&gt;% 
+  ggplot(aes(x = 1- specificity, y = sensitivity, color = min_n)) +
+  geom_path() +
+  coord_equal() +
+  geom_abline(lty = 3, alpha = 0.6) 
+
+  
+tune_rf %&gt;% 
+  collect_predictions() %&gt;% 
+  mutate(trees = factor(trees)) %&gt;% 
+  group_by(trees) %&gt;% 
+  roc_curve(truth = Survived, .pred_1, event_level = &quot;second&quot;) %&gt;% 
+  ggplot(aes(x = 1- specificity, y = sensitivity, color = trees)) +
+  geom_path() +
+  coord_equal() +
+  geom_abline(lty = 3, alpha = 0.6) </code></pre>
+<p><img src="/post/Kaggle_Titanic_Versuch2_files/figure-html/unnamed-chunk-18-1.png" width="33%" /><img src="/post/Kaggle_Titanic_Versuch2_files/figure-html/unnamed-chunk-18-2.png" width="33%" /><img src="/post/Kaggle_Titanic_Versuch2_files/figure-html/unnamed-chunk-18-3.png" width="33%" /></p>
+<p>Nachdem wir visuell untersucht haben, welche Hyperparameterwerte sinnvoll erscheinen, wählen wir nun auf analytischerem Weg die endgültigen Werte der Hyperparameter. Dazu verwenden wir als Metriken sowohl die durchschnittliche Accuracy über alle 10 Folds, als auch den Standardfehler der 10 Accuracy Werte pro Parameterkombination. Zwar möchten wir ein Modell mit möglichst hoher durchschnittlicher Accuracy, allerdings ist es auch wichtig, eine Parameterkombination zu wählen, die bei Anwendung auf verschiedenen Datensätzen keine allzu schwankende Performance liefert. Dies ist insbesondere unter dem Aspekt wichtig, dass wie bei der Kaggle Competition Prognosen für nur einen Datensatz liefern müssen bzw. können und nicht wie bei der Cross Validation sozusagen 10 Versuche pro Parameterkombination haben, wo nur der Durchscnittswert zählt. Dazu speichern wir jeweils die besten 20 Modelle gemäß <em>Accuracy</em> und die besten 20 Modelle gemäß dem <em>Standardfehler der Accuracywerte</em>. Anschließend führe ich einen <em>Semi Join</em> durch, um die Modelle zu erhalten, die unter den Top 20 der Modelle gemäß beider Metriken sind. Dieses Vorghehen liefert uns 6 Modelle. Da diese 6 Modelle sehr ähnliche Accuracywerte aufweisen, wählen wir als endgültiges Modell das Modell mit der geringsten Streuung.</p>
+<pre class="r"><code>cv_rf &lt;-tune_rf %&gt;% 
+  collect_metrics()
+
+best_accuracy &lt;- tune_rf %&gt;% 
+  show_best(metric = &quot;accuracy&quot;, n = 20)
+
+best_std &lt;- cv_rf %&gt;% 
+  filter(.metric == &quot;accuracy&quot;) %&gt;% 
+  arrange(std_err) %&gt;% 
+  head(n = 20)
+
+# The Subset off Models that are both in the top 20 according to accuracy and also in the top 20 according to sd of accuracy
+best_params_top_6 &lt;- best_accuracy %&gt;% 
+  semi_join(best_std, by = c(&quot;.config&quot;), keep = FALSE) %&gt;% 
+  arrange(std_err)
+best_params_top_6 %&gt;% 
+  knitr::kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="right">mtry</th>
+<th align="right">trees</th>
+<th align="right">min_n</th>
+<th align="left">.metric</th>
+<th align="left">.estimator</th>
+<th align="right">mean</th>
+<th align="right">n</th>
+<th align="right">std_err</th>
+<th align="left">.config</th>
+</tr>
+</thead>
+<tbody>
+</tbody>
+</table>
+<pre class="r"><code>best_params &lt;- best_params_top_6 %&gt;% 
+  slice_head(n = 1) %&gt;% 
+  select(mtry, trees, min_n, .config)</code></pre>
+<p>Somit verwenden wir sowohl zur Validierung am Testdatensatz als auch zur Prognose am Datensatz <em>titanic_holdout</em> die Parameterwerte:</p>
+<ul>
+<li>mtry = 5</li>
+<li>trees = 500</li>
+<li>min_n = 18</li>
+</ul>
+<pre class="r"><code># set.seed(1234)
+# 
+# last_rf_fit &lt;- rf_wflow %&gt;% 
+#   finalize_workflow(parameters = best_params) %&gt;% 
+#   last_fit(split = titanic_split)
+# 
+# last_rf_fit %&gt;% 
+#   collect_metrics()
+# 
+# last_rf_fit %&gt;% 
+#   pluck(&quot;.workflow&quot;, 1) %&gt;%   
+#   pull_workflow_fit() %&gt;% 
+#   vip(num_features = 7)</code></pre>
+</div>
+</div>
