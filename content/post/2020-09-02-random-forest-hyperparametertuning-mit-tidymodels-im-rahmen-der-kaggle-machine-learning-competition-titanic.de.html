@@ -1,0 +1,5520 @@
+---
+title: 'Random Forest: Hyperparametertuning mit tidymodels im Rahmen der Titanic Machine
+  Learning Competition auf Kaggle'
+author: Nicolas Mollier
+date: '2020-09-02'
+slug: random-forest-hyperparametertuning-mit-tidymodels-im-rahmen-der-kaggle-machine-learning-competition-titanic
+categories: []
+tags:
+  - Hyperparametertuning
+  - tidymodels
+  - Predictive Modeling
+subtitle: ''
+summary: ''
+authors: []
+lastmod: '2020-09-02T16:25:09+02:00'
+featured: no
+image:
+  caption: ''
+  focal_point: ''
+  preview_only: no
+projects: []
+---
+
+<script src="/rmarkdown-libs/kePrint/kePrint.js"></script>
+
+
+<p>Eine Analyse für die Teilnahme an der Titanic Machine Learning Competition auf <a href="https://www.kaggle.com/c/titanic" class="uri">https://www.kaggle.com/c/titanic</a>. Das Hauptaugenmerk dieser Analyse liegt auf dem Hyperparametertuning per Cross-Validation. Für die Modellierung wird <em>tidymodels</em> -der Nachfolger von <em>caret</em>- verwendet.</p>
+<div id="packages" class="section level2">
+<h2>Packages</h2>
+<pre class="r"><code>library(tidyverse)
+library(tidymodels)
+library(doParallel)
+library(vip)
+library(kableExtra)
+library(modelr)</code></pre>
+</div>
+<div id="get-the-data" class="section level2">
+<h2>Get the Data</h2>
+<p>Im ersten Schritt laden wir den Trainingsdatensatz und den Testdatensatz, nachdem wir beide unter <a href="https://www.kaggle.com/c/titanic/data" class="uri">https://www.kaggle.com/c/titanic/data</a> heruntergeladen haben.</p>
+<pre class="r"><code>titanic &lt;- read_csv(&quot;train.csv&quot;)
+titanic_holdout &lt;- read_csv(&quot;test.csv&quot;)</code></pre>
+</div>
+<div id="exploarative-datenanalyse" class="section level2">
+<h2>Exploarative Datenanalyse</h2>
+<p>Wir beginnen mit einer kurzen explorativen Datenanalyse.</p>
+<p>Der Datensatz <em>titanic</em> enthält Informationen aus 12 Variablen für 891 Passagiere der Titanic. Abzüglich der Variablen <em>Survived</em> und <em>PassengerId</em> stehen uns zunächst 10 Prädiktoren zur Verfügung.</p>
+<pre class="r"><code>glimpse(titanic)</code></pre>
+<pre><code>## Rows: 891
+## Columns: 12
+## $ PassengerId &lt;dbl&gt; 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17…
+## $ Survived    &lt;dbl&gt; 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 1, 0, …
+## $ Pclass      &lt;dbl&gt; 3, 1, 3, 1, 3, 3, 1, 3, 3, 2, 3, 1, 3, 3, 3, 2, 3, 2, 3, …
+## $ Name        &lt;chr&gt; &quot;Braund, Mr. Owen Harris&quot;, &quot;Cumings, Mrs. John Bradley (F…
+## $ Sex         &lt;chr&gt; &quot;male&quot;, &quot;female&quot;, &quot;female&quot;, &quot;female&quot;, &quot;male&quot;, &quot;male&quot;, &quot;ma…
+## $ Age         &lt;dbl&gt; 22, 38, 26, 35, 35, NA, 54, 2, 27, 14, 4, 58, 20, 39, 14,…
+## $ SibSp       &lt;dbl&gt; 1, 1, 0, 1, 0, 0, 0, 3, 0, 1, 1, 0, 0, 1, 0, 0, 4, 0, 1, …
+## $ Parch       &lt;dbl&gt; 0, 0, 0, 0, 0, 0, 0, 1, 2, 0, 1, 0, 0, 5, 0, 0, 1, 0, 0, …
+## $ Ticket      &lt;chr&gt; &quot;A/5 21171&quot;, &quot;PC 17599&quot;, &quot;STON/O2. 3101282&quot;, &quot;113803&quot;, &quot;3…
+## $ Fare        &lt;dbl&gt; 7.2500, 71.2833, 7.9250, 53.1000, 8.0500, 8.4583, 51.8625…
+## $ Cabin       &lt;chr&gt; NA, &quot;C85&quot;, NA, &quot;C123&quot;, NA, NA, &quot;E46&quot;, NA, NA, NA, &quot;G6&quot;, &quot;…
+## $ Embarked    &lt;chr&gt; &quot;S&quot;, &quot;C&quot;, &quot;S&quot;, &quot;S&quot;, &quot;S&quot;, &quot;Q&quot;, &quot;S&quot;, &quot;S&quot;, &quot;S&quot;, &quot;C&quot;, &quot;S&quot;, &quot;S…</code></pre>
+<div id="beziehung-zwischen-den-prädiktoren-und-der-zu-erklärenden-variablen-survived" class="section level3">
+<h3>Beziehung zwischen den Prädiktoren und der zu erklärenden Variablen <em>Survived</em></h3>
+<p>Als erstes betrachten wir in welcher Beziehung die einzelnen Prädiktoren mit der zu erklärenden Variablen <em>Survived</em> stehen.</p>
+<pre class="r"><code>titanic %&gt;% 
+  select(Age, Fare, Parch, SibSp, Survived) %&gt;% 
+  mutate(Survived = factor(Survived)) %&gt;% 
+  pivot_longer(-Survived, names_to = &quot;variable&quot;, values_to = &quot;value&quot;) %&gt;% 
+  ggplot(aes(x = Survived, y = value, fill = Survived)) +
+  geom_boxplot() +
+  facet_wrap(~variable, scales = &quot;free&quot;) +
+  theme(axis.title = element_blank())</code></pre>
+<p><img src="/post/2020-09-02-random-forest-hyperparametertuning-mit-tidymodels-im-rahmen-der-kaggle-machine-learning-competition-titanic.de_files/figure-html/EDA%201-1.png" width="672" /></p>
+<p>Die Grafik zeigt inwieweit sich die Verteilungen der numerischen Varaiblen unterscheiden, je nachedm ob die jeweiligen Passagiere (Observationen) überlebt haben oder nicht. Zur Überprüfung der Unterschiede in Alter und Ticketpreis wurden je eine ANOVA durchgeführt.</p>
+<pre class="r"><code># Age and Survived
+
+anova_age_survived &lt;- anova(aov(Age ~ Survived, data = titanic)) 
+p_anova_age_survived &lt;- anova_age_survived$`Pr(&gt;F)`[1]
+
+
+# Fare and Survived
+
+anova_fare_survived &lt;- anova(aov(Fare ~ Survived, data = titanic))
+p_anova_fare_survived &lt;- anova_fare_survived$`Pr(&gt;F)`[1]</code></pre>
+<p>Die Überlebenden waren zwar statistisch signifikant jünger (ANOVA: p-Wert = 3.91%). Allerdings beträgt der Unterschied nur 2.3 Jahre (28.3 vs. 30.6) Die Überlebenden besaßen aber deutlich höherpreisige Tickets als die Verstorbenen (48.4 vs. 22.1, ANOVA: p-Wert &lt; 0.01).</p>
+<p>Die nachfolgende Grafik zeigt die Beziehung der Variablen <em>Embarked</em>, <em>Pclass</em> und <em>Sex</em> mit der zu erklärenden Variablen <em>Survived</em>. Auf der y-Achse sind die Überlebensraten abgetragen.</p>
+<pre class="r"><code>titanic %&gt;% 
+  select(Embarked, Sex, Pclass, Survived) %&gt;% 
+  filter(Embarked != &quot;NA&quot;) %&gt;% 
+  mutate_at(vars(Embarked, Sex, Pclass), as.factor) %&gt;% 
+  pivot_longer(-Survived, names_to = &quot;variable&quot;, values_to = &quot;value&quot;) %&gt;% 
+  group_by(variable, value) %&gt;% 
+  summarise(mean = mean(Survived, na.rm = T)) %&gt;% 
+  mutate(variable = factor(variable)) %&gt;% 
+  ggplot(aes(value, mean)) +
+  geom_bar(stat = &quot;identity&quot;, na.rm = T) +
+  facet_grid(~variable, scale = &quot;free_x&quot;, space = &quot;free&quot;) +
+  labs(x = &quot;&quot;, y = &quot;Überlebensrate&quot;)</code></pre>
+<p><img src="/post/2020-09-02-random-forest-hyperparametertuning-mit-tidymodels-im-rahmen-der-kaggle-machine-learning-competition-titanic.de_files/figure-html/unnamed-chunk-4-1.png" width="672" /></p>
+<p>Passagiere der ersten Klasse überlebten deutlich häufiger als die Passagiere der zweiten bzw. dritten Klasse. Am deutlichsten ist der Unterschied der Überlebensrate zwischen Männern und Frauen. Während Frauen zu 74.20% überlebten, waren es unter den männlichen Passagieren nur 18.89%.</p>
+</div>
+<div id="kollinearität-der-prädiktoren" class="section level3">
+<h3>Kollinearität der Prädiktoren</h3>
+<p>Wir werfen einen kurzen Blick auf die Kollinearität der Prädiktoren.</p>
+<pre class="r"><code>titanic %&gt;% 
+  select(Age, Fare, Parch, SibSp, Pclass) %&gt;% 
+  na.omit() %&gt;% 
+  cor() %&gt;% 
+  corrplot::corrplot.mixed()</code></pre>
+<p><img src="/post/2020-09-02-random-forest-hyperparametertuning-mit-tidymodels-im-rahmen-der-kaggle-machine-learning-competition-titanic.de_files/figure-html/Collinearity%20of%20numeric%20variables-1.png" width="384" /></p>
+<p>Die numerischen Prädiktoren weisen keine erhöhten Korrelationen untereinander auf. Dennoch werden wir zur Sicherheit vor der Modellierung im Schritt <em>recipe</em> einen Algorithmus auf die Daten anwenden, der Prädiktoren mit zu großer absoluter Korrelation mit anderen Prädiktoren entfernt.</p>
+</div>
+<div id="schiefe-der-verteilungen" class="section level3">
+<h3>Schiefe der Verteilungen</h3>
+<p>Als nächstes betrachten wir die Verteilungen der Prädiktorvariablen. Zu schiefe Verteilungen können bei der Prognose zu Problemen führen.</p>
+<pre class="r"><code>titanic %&gt;% 
+  select(Age, Fare, SibSp, Parch) %&gt;%
+  pivot_longer(1:4, names_to = &quot;variable&quot;, values_to = &quot;value&quot;) %&gt;% 
+  ggplot(aes(value)) +
+  geom_histogram() +
+  facet_wrap(~variable, scales = &quot;free&quot;) +
+  labs(x = &quot;&quot;, y = &quot;&quot;)</code></pre>
+<p><img src="/post/2020-09-02-random-forest-hyperparametertuning-mit-tidymodels-im-rahmen-der-kaggle-machine-learning-competition-titanic.de_files/figure-html/Distribution%20of%20Predictors:%20Skewness-1.png" width="672" /></p>
+<p>Insbesondere die Variable <em>Fare</em> weist eine enorm rechtsschiefe Verteilung auf. Deshalb werden wir vor der Modellierung die Yeo-Johnson Transformation anwenden, um die Verteilung von <em>Fare</em> symmetrischer zu machen.</p>
+</div>
+</div>
+<div id="entfernung-von-variablen" class="section level2">
+<h2>Entfernung von Variablen</h2>
+<div id="overfitting" class="section level3">
+<h3>Overfitting</h3>
+<p>Um ein Overfitting zu vermeiden, möchten wir Variablen, die den jeweiligen Passagier eindeutig oder nahezu eindeutig identifizieren, nicht zur Modellierung verwenden. Um diese Variablen herauszufinden, betrachten wir die Anzahl der “unique values” der Variablen des Typs <em>character</em>.</p>
+<pre class="r"><code>titanic %&gt;% 
+  select_if(is.character) %&gt;% 
+  map(unique) %&gt;% 
+  map_df(length) %&gt;% 
+  pivot_longer(Name:Embarked, names_to = &quot;variable&quot;, values_to = &quot;# unique values&quot;) %&gt;% 
+  knitr::kable()</code></pre>
+<table>
+<thead>
+<tr>
+<th style="text-align:left;">
+variable
+</th>
+<th style="text-align:right;">
+# unique values
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+Name
+</td>
+<td style="text-align:right;">
+891
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Sex
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Ticket
+</td>
+<td style="text-align:right;">
+681
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Cabin
+</td>
+<td style="text-align:right;">
+148
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Embarked
+</td>
+<td style="text-align:right;">
+4
+</td>
+</tr>
+</tbody>
+</table>
+<p>Die Variablen mit Typ <em>character</em> haben teilweise sehr viele verschiedene Werte. Mit den Variablen <em>Name</em> und <em>Ticket</em> sind die jeweiligen Passagiere nahezu eindeutig identifizierbar. Um ein Overfitting zu vermeiden, werden <em>Name</em> und <em>Ticket</em> deshalb nicht zur Modellierung benutzt.</p>
+</div>
+</div>
+<div id="missings" class="section level2">
+<h2>Missings</h2>
+<p>Für die Schätzung (Imputation) fehlender Werte verwenden wir <em>Bagged Tree Imputation</em>. Enthält eine Variable allerdings zu viele Missings, so macht selbst eine Schätzung der fehlenden Werte keinen Sinn mehr und die Variable sollte entfernt werden.</p>
+<pre class="r"><code>na_prop_cabin &lt;- titanic %&gt;% 
+  count(Cabin) %&gt;% 
+  mutate(prop = n / sum(n)) %&gt;% 
+  arrange(desc(prop)) %&gt;% 
+  slice_head(n = 1) %&gt;% 
+  select(prop) %&gt;% 
+  as_vector()</code></pre>
+<p>Die Variable <em>Cabin</em> enthält zu 77.10% fehlende Werte (NAs). Aus diesem Grund wird auch diese Variable nicht zur Modellierung verwendet.</p>
+<p>Insegesamt werden also <em>Cabin</em>, <em>Name</em> und <em>Ticket</em> aus dem Datensatz entfernt.</p>
+<pre class="r"><code>titanic &lt;- titanic %&gt;%
+  select(-Cabin, -Name, -Ticket)</code></pre>
+<p>Neben der bereits entfernten Variablen <em>Cabin</em> weisen noch zwei weitere Variablen fehlende Werte auf.</p>
+<pre class="r"><code>summary(titanic)</code></pre>
+<pre><code>##   PassengerId       Survived          Pclass          Sex           
+##  Min.   :  1.0   Min.   :0.0000   Min.   :1.000   Length:891        
+##  1st Qu.:223.5   1st Qu.:0.0000   1st Qu.:2.000   Class :character  
+##  Median :446.0   Median :0.0000   Median :3.000   Mode  :character  
+##  Mean   :446.0   Mean   :0.3838   Mean   :2.309                     
+##  3rd Qu.:668.5   3rd Qu.:1.0000   3rd Qu.:3.000                     
+##  Max.   :891.0   Max.   :1.0000   Max.   :3.000                     
+##                                                                     
+##       Age            SibSp           Parch             Fare       
+##  Min.   : 0.42   Min.   :0.000   Min.   :0.0000   Min.   :  0.00  
+##  1st Qu.:20.12   1st Qu.:0.000   1st Qu.:0.0000   1st Qu.:  7.91  
+##  Median :28.00   Median :0.000   Median :0.0000   Median : 14.45  
+##  Mean   :29.70   Mean   :0.523   Mean   :0.3816   Mean   : 32.20  
+##  3rd Qu.:38.00   3rd Qu.:1.000   3rd Qu.:0.0000   3rd Qu.: 31.00  
+##  Max.   :80.00   Max.   :8.000   Max.   :6.0000   Max.   :512.33  
+##  NA&#39;s   :177                                                      
+##    Embarked        
+##  Length:891        
+##  Class :character  
+##  Mode  :character  
+##                    
+##                    
+##                    
+## </code></pre>
+<p>Die Variable <em>Age</em> hat 177 Observationen mit fehlendem Wert. Bei Variablen des Typs <em>character</em> sind fehlende Werte durch bloßen Aufruf der Funktion <em>summary()</em> nicht erkennbar. Durch zweifachen Aufruf der Funktion <em>map()</em> können alle verbleibenden Variablen mit fehlenden Werten identifiziert werden.</p>
+<pre class="r"><code>map(titanic, is.na) %&gt;% 
+  map_df(sum) %&gt;% 
+  pivot_longer(PassengerId:Embarked, names_to = &quot;variable&quot;, values_to = &quot;missings&quot;) %&gt;% 
+  filter(missings &gt; 0) %&gt;% 
+  knitr::kable()</code></pre>
+<table>
+<thead>
+<tr>
+<th style="text-align:left;">
+variable
+</th>
+<th style="text-align:right;">
+missings
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+Age
+</td>
+<td style="text-align:right;">
+177
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Embarked
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+</tbody>
+</table>
+<p>Die Variable <em>Embarked</em> besitzt 2 fehlende Werte. Im Schritt <em>recipe</em> wird die Schätzung der fehlenden Werte der Variablen <em>Age</em> und <em>Embarked</em> mithilfe von <em>Bagged Trees</em> anhand der Ausprägungen der anderen Variablen des jeweiligen Passagiers spezifiziert.</p>
+</div>
+<div id="data-split" class="section level2">
+<h2>Data Split</h2>
+<p>Bevor wir mit der Modellierung beginnen, wird der Datensatz <em>titanic</em> in den Trainingsdatensatz <em>titanic_train</em> und den Testdatensatz <em>titanic_test</em> aufgesplittet. Dabei wird <em>Stratified Sampling</em> verwendet, um zu erreichen, dass die Verteilung von Überlebenden und Verstorbenen in beiden Datensätzen etwa gleich groß ist.</p>
+<pre class="r"><code>set.seed(1234)
+titanic_split &lt;- initial_split(titanic, strata = Survived)
+titanic_train &lt;- training(titanic_split)
+titanic_test &lt;- testing(titanic_split)</code></pre>
+<p>Insgesamt haben wir also drei Datensätze: Den Trainingsdatensatz <em>titanic_train</em> an dem wir mit 10-fold Cross Validation die Werte der jeweiligen Hyperparameter der Modelle bestimmen. Der Testdatensatz <em>titanic_test</em> andem wir die Performance des durch Cross Validation gefundenen besten Modells auf einem, dem Modell unbekannten, Datensatz testen. Und den Datensatz <em>titanic_holdout</em>, bei dem wir nicht wissen, ob die Passagiere überlebt haben oder nicht und für den wir diese Werte im Rahmen der Kaggle Competition prognostizieren müssen.</p>
+</div>
+<div id="modellierung" class="section level2">
+<h2>Modellierung</h2>
+<p>Die Modellierung mit <em>tidymodels</em> kann in folgende Schritte unterteilt werden. Zunächst wird ein sogenanntes <em>Rezept</em> erstellt, dass alle Pre-Processing Schritte wie Imputation und Transformationen von Variablen umfasst. Danach wird die sogenannte Modellspezifikation vorgenommen. Danach werden <em>Rezept</em> und <em>Modellspezifikation</em> im sogenannten <em>Workflow</em> zusammengefasst. Dieser Workflow wird dann genutzt, um das Hyperparametertuning, die Validierung des besten Modells und die abschließende Prognose für die Competition zu erstellen.</p>
+<div id="recipe" class="section level3">
+<h3>Recipe</h3>
+<p>Zunächst wird mit der Funktion <em>recipe()</em> festgelegt, welche Pre-Processing Schritte durchzuführen sind. Hier wird umgesetzt, was wie im Rahmen der explorativen Datenanalysen herausgefunden haben. <em>PClass</em> und <em>Survived</em> werden zu Faktorvariablen umgewandelt. Fehlende Werte der Variablen <em>Age</em> und <em>Embarked</em> werden per <em>Bagging</em> geschätzt und auf die Variable <em>Fare</em> wird die Yeo-Johnson Transformation angewendet.</p>
+<pre class="r"><code>titanic_rec &lt;- recipe(Survived ~ ., data = titanic_train) %&gt;%
+  update_role(PassengerId, new_role = &quot;ID&quot;) %&gt;% 
+  step_mutate(Pclass = factor(Pclass, labels = c(&quot;first&quot;, &quot;second&quot;, &quot;third&quot;)) %&gt;% 
+                fct_rev()) %&gt;% 
+  step_mutate(Survived = factor(Survived)) %&gt;% 
+  step_bagimpute(all_predictors()) %&gt;%
+  step_YeoJohnson(Fare)  %&gt;% 
+  #step_dummy(Pclass, Embarked, Sex) %&gt;% 
+  prep()</code></pre>
+<p>Um zu überprüfen, welche Auswirkung die Yeo-Johnson Transformation auf die Verteilung der Variablen <em>Fare</em> hat, betrachten wir folgende Grafik. Die Verteilung ist immer noch rechtsschief, aber die Schiefe wurde deutlich reduziert.</p>
+<pre class="r"><code>bake(titanic_rec, new_data = titanic) %&gt;% 
+  select(Fare) %&gt;% 
+  mutate(Fare_original = titanic$Fare) %&gt;% 
+  rename(Fare_transformed = Fare) %&gt;% 
+  pivot_longer(1:2, names_to = &quot;variable&quot;, values_to = &quot;values&quot;) %&gt;% 
+  mutate(variable = factor(variable)) %&gt;% 
+  ggplot(aes(x = values, fill = variable)) +
+  geom_histogram() +
+  facet_grid(~variable, scales = &quot;free&quot;) +
+  theme(legend.position = &quot;none&quot;) %&gt;% 
+  labs(x = &quot;&quot;, y = &quot;&quot;)</code></pre>
+<p><img src="/post/2020-09-02-random-forest-hyperparametertuning-mit-tidymodels-im-rahmen-der-kaggle-machine-learning-competition-titanic.de_files/figure-html/unnamed-chunk-9-1.png" width="672" /></p>
+</div>
+<div id="modellspezifikation-und-workflow" class="section level3">
+<h3>Modellspezifikation und Workflow</h3>
+<p>Im nächsten Schritt wird das Modell spezifiziert. Wir wählen ein Random Forest Modell zur Klassifizierung, welches als Engine das Paket <em>ranger</em> verwendet. Die Hyperparameter <em>mtry</em>, <em>trees</em> und <em>min_n</em> erhalten Platzhalter, da sie erst noch im nächsten Schritt per Cross Validation bestimmt werden.</p>
+<pre class="r"><code>rf_spec &lt;- rand_forest(
+  mode = &quot;classification&quot;,
+  mtry = tune(),
+  trees = tune(),
+  min_n = tune()) %&gt;% 
+  set_engine(&quot;ranger&quot;, importance = &quot;impurity&quot;)</code></pre>
+<p>Das angefertigte Rezept und die Modellspezifikation werden im sogenannten Workflow zusammengefasst.</p>
+<pre class="r"><code>rf_wflow &lt;- workflow() %&gt;% 
+  add_recipe(titanic_rec) %&gt;% 
+  add_model(rf_spec)</code></pre>
+</div>
+<div id="hyperparametertuning" class="section level3">
+<h3>Hyperparametertuning</h3>
+<p>Zur Durchführung des Hyperparametertuning werden 10 Folds aus dem Trainingsdatensatz gebildet, die jeweils in Analyseset und Assessmentset unterteilt sind. Je Fold wird das Analyseset zum Trainng des Modells genutzt, während anhand des Assessmentsets die Performance bestimmt wird. Auch hier nutzen wir <em>Stratified Sampling</em>.</p>
+<pre class="r"><code>set.seed(1234)
+titanic_train_folds &lt;- vfold_cv(titanic_train, strata = Survived)
+titanic_train_folds </code></pre>
+<pre><code>## #  10-fold cross-validation using stratification 
+## # A tibble: 10 x 2
+##    splits           id    
+##    &lt;list&gt;           &lt;chr&gt; 
+##  1 &lt;split [601/68]&gt; Fold01
+##  2 &lt;split [601/68]&gt; Fold02
+##  3 &lt;split [602/67]&gt; Fold03
+##  4 &lt;split [602/67]&gt; Fold04
+##  5 &lt;split [602/67]&gt; Fold05
+##  6 &lt;split [602/67]&gt; Fold06
+##  7 &lt;split [602/67]&gt; Fold07
+##  8 &lt;split [603/66]&gt; Fold08
+##  9 &lt;split [603/66]&gt; Fold09
+## 10 &lt;split [603/66]&gt; Fold10</code></pre>
+<p>Wir bilden ein Grid, dass alle Kombinationen aus den Werten der Hyperparameter enthält. Wir versuchen 7 verschiedene Werte für die Anzahl der pro Split des jeweiligen Decision Trees verwendeten Prädiktoren (<em>mtry</em>), 5 verschiedene Werte für die Anzahl der pro Random Forest verwendeten Decision Trees (<em>trees</em>) und 8 verschiedene Werte für die minimale Anzahl an Observationen die in einem Knoten eines Decision Trees notwendig ist, um einen Split dieses Knotens in Erwägung zu ziehen. Die Spanne der betrachteten Werte für <em>mtry</em> wird auf 1 bis 7 festgelegt.</p>
+<pre class="r"><code>rf_param &lt;- parameters(rf_spec) %&gt;% 
+  update(mtry = mtry(range = c(1, 7)),
+         trees = trees(range = c(1, 2500))) %&gt;% 
+  finalize(x = titanic_train %&gt;% select(-Survived))
+
+grid_rf &lt;- grid_regular(rf_param, levels = c(mtry = 7, trees = 6, min_n = 8))
+
+grid_rf %&gt;% 
+  knitr::kable() %&gt;% 
+  kable_styling(bootstrap_options = c(&quot;striped&quot;, &quot;hover&quot;)) %&gt;% 
+  scroll_box(width = &quot;35%&quot;, height = &quot;300px&quot;)</code></pre>
+<div style="border: 1px solid #ddd; padding: 0px; overflow-y: scroll; height:300px; overflow-x: scroll; width:35%; ">
+<table class="table table-striped table-hover" style="margin-left: auto; margin-right: auto;">
+<thead>
+<tr>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+mtry
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+trees
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+min_n
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+2
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+7
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+7
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+7
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+7
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+7
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+7
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+7
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+7
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+7
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+7
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+7
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+7
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+7
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+7
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+7
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+7
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+7
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+7
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+7
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+7
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+7
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+7
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+7
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+7
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+7
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+7
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+7
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+7
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+7
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+7
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+7
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+7
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+7
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+7
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+7
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+7
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+7
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+7
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+7
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+7
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+7
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+7
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+12
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+12
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+12
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+12
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+12
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+12
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+12
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+12
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+12
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+12
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+12
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+12
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+12
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+12
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+12
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+12
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+12
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+12
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+12
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+12
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+12
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+12
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+12
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+12
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+12
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+12
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+12
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+12
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+12
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+12
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+12
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+12
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+12
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+12
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+12
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+12
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+12
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+12
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+12
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+12
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+12
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+12
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+18
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+18
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+18
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+18
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+18
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+18
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+18
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+18
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+18
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+18
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+18
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+18
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+18
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+18
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+18
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+18
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+18
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+18
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+18
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+18
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+18
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+18
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+18
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+18
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+18
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+18
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+18
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+18
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+18
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+18
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+18
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+18
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+18
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+18
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+18
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+18
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+18
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+18
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+18
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+18
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+18
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+18
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+23
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+23
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+23
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+23
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+23
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+23
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+23
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+23
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+23
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+23
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+23
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+23
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+23
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+23
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+23
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+23
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+23
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+23
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+23
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+23
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+23
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+23
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+23
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+23
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+23
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+23
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+23
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+23
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+23
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+23
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+23
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+23
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+23
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+23
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+23
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+23
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+23
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+23
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+23
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+23
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+23
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+23
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+29
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+29
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+29
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+29
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+29
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+29
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+29
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+29
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+29
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+29
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+29
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+29
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+29
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+29
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+29
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+29
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+29
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+29
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+29
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+29
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+29
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+29
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+29
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+29
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+29
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+29
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+29
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+29
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+29
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+29
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+29
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+29
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+29
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+29
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+29
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+29
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+29
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+29
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+29
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+29
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+29
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+29
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+34
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+34
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+34
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+34
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+34
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+34
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+34
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+34
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+34
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+34
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+34
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+34
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+34
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+34
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+34
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+34
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+34
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+34
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+34
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+34
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+34
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+34
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+34
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+34
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+34
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+34
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+34
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+34
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+34
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+34
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+34
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+34
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+34
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+34
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+34
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+34
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+34
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+34
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+34
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+34
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+34
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+34
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+40
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+40
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+40
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+40
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+40
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+40
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+40
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+40
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+40
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+40
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+40
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+40
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+40
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+40
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+40
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+40
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+40
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+40
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+40
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+40
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+40
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+40
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+40
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+40
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+40
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+40
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+40
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+40
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+40
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+40
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+40
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+40
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+40
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+40
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+40
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+40
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+40
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+40
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+40
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+40
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+40
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+40
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Insgesamt erhalten wir 336 Kombinationsmöglichkeiten für die Hyperparameter. Für jede dieser Kombinationen wird pro Fold ein Random Forest mit jeweils bis zu 2500 Decision Trees trainiert. Das ergibt insgesamt 3360 Random Forests. Um die Zeit zu reduzieren, die für das Trainieren all dieser Random Forests bzw. Decision Trees notwendig ist, verwenden wir <em>Parallel Processing</em>.</p>
+<pre class="r"><code>all_cores &lt;- parallel::detectCores(logical = FALSE) 
+doParallel::registerDoParallel(cores = all_cores)</code></pre>
+<p>In diesem Schritt findet das Training der 2800 Random Forests im Rahmen des Hyperparametertunings statt. Dazu wird der bereits definierte Workflow zusammen mit dem bereits spezifizierten Grid der zu testenden Parameterwerte und den gebildeten Folds in der Funktion <em>tune_grid</em> verwendet.</p>
+<pre class="r"><code>tune_rf &lt;- tune_grid(
+  rf_wflow,
+  resamples = titanic_train_folds,
+  grid = grid_rf,
+  control = control_grid(save_pred = T)
+)</code></pre>
+</div>
+<div id="visualisierung" class="section level3">
+<h3>Visualisierung</h3>
+<p>Nachdem die Modelle trainiert wurden, visualisieren wir die Ergebnisse der Cross Validation.</p>
+<div id="accuracy-und-auc" class="section level4">
+<h4>Accuracy und AUC</h4>
+<p>Als mögliche Werte für die Anzahl der verwendeten Trees pro Random Forest wurden die Werte 1, 500, 1000, 1500 und 2000 verwendet.</p>
+<pre class="r"><code>tune_rf %&gt;% 
+  collect_metrics() %&gt;% 
+  filter(.metric == &quot;accuracy&quot;) %&gt;% 
+  mutate(mtry = factor(mtry)) %&gt;% 
+  ggplot(aes(x = min_n, y = mean, color = mtry)) +
+  geom_line() +
+  geom_point() +
+  facet_wrap(~trees, labeller = &quot;label_both&quot;) +
+  labs(x = &quot;Minimal Node Size (min_n)&quot;,
+       y = &quot;Accuracy&quot;)</code></pre>
+<p><img src="/post/2020-09-02-random-forest-hyperparametertuning-mit-tidymodels-im-rahmen-der-kaggle-machine-learning-competition-titanic.de_files/figure-html/unnamed-chunk-16-1.png" width="672" /></p>
+<p>Die Grafik zeigt, dass -wie zu erwarten- die am schlechtesten performenden Modelle solche sind, die nur aus einem Tree bestehen. Ob 500, 1000, 15000, 2000 oder 2500 Trees pro Random Forest verwendet werden, scheint keinen Unterschied zu machen. Die Modelle mit einer <em>Minimal Node Size</em> (<em>min_n</em>) von etwa 20 bis 25 scheinen die besten Ergebnisse für die Metrik <em>Accuracy</em> zu erzielen. Für die Metrik <em>Area under the Curve (AUC)</em> spielt die Wahl der Hyperparameter insgesamt keine große Rolle, solange man mindestens 500 Trees pro Random Forest verwendet. Für die Anzahl der pro Knoten betrachteten Prädiktoren scheint ein Wert von etwa 3 gut zu funktionieren, wenn man die Kurven für die Accuracy betrachtet. Dieser Eindruck wird durch die nachfolgende Grafik bestätigt.</p>
+<pre class="r"><code>tune_rf %&gt;% 
+  collect_metrics() %&gt;%
+  filter(.metric == &quot;accuracy&quot; &amp; trees != 1) %&gt;% 
+  select(mean, mtry:min_n) %&gt;% 
+  pivot_longer(mtry:min_n, 
+               names_to = &quot;parameter&quot;,
+               values_to = &quot;value&quot;) %&gt;% 
+  ggplot(aes(value, mean, color = parameter)) +
+  geom_point() +
+  geom_smooth() +
+  facet_wrap(~parameter, scales = &quot;free_x&quot;) +
+  labs(x = &quot;&quot;,
+       y = &quot;Accuracy&quot;)</code></pre>
+<p><img src="/post/2020-09-02-random-forest-hyperparametertuning-mit-tidymodels-im-rahmen-der-kaggle-machine-learning-competition-titanic.de_files/figure-html/unnamed-chunk-17-1.png" width="672" /></p>
+</div>
+<div id="roc" class="section level4">
+<h4>ROC</h4>
+<p>Wir visualisieren die ROC Kurven, wobei wir jeweils die Kurven durch eine der drei Hyperparameter gruppieren und einfärben.</p>
+<pre class="r"><code>tune_rf %&gt;% 
+  collect_predictions() %&gt;% 
+  mutate(mtry = factor(mtry)) %&gt;% 
+  group_by(mtry) %&gt;% 
+  roc_curve(truth = Survived, .pred_1, event_level = &quot;second&quot;) %&gt;% 
+  ggplot(aes(x = 1- specificity, y = sensitivity, color = mtry)) +
+  geom_path() +
+  geom_abline(lty = 3, alpha = 0.6) +
+  coord_equal()</code></pre>
+<p><img src="/post/2020-09-02-random-forest-hyperparametertuning-mit-tidymodels-im-rahmen-der-kaggle-machine-learning-competition-titanic.de_files/figure-html/unnamed-chunk-18-1.png" width="672" /></p>
+<pre class="r"><code>tune_rf %&gt;% 
+  collect_predictions() %&gt;% 
+  mutate(min_n = factor(min_n)) %&gt;% 
+  group_by(min_n) %&gt;% 
+  roc_curve(truth = Survived, .pred_1, event_level = &quot;second&quot;) %&gt;% 
+  ggplot(aes(x = 1- specificity, y = sensitivity, color = min_n)) +
+  geom_path() +
+  coord_equal() +
+  geom_abline(lty = 3, alpha = 0.6) </code></pre>
+<p><img src="/post/2020-09-02-random-forest-hyperparametertuning-mit-tidymodels-im-rahmen-der-kaggle-machine-learning-competition-titanic.de_files/figure-html/unnamed-chunk-18-2.png" width="672" /></p>
+<pre class="r"><code>tune_rf %&gt;% 
+  collect_predictions() %&gt;% 
+  mutate(trees = factor(trees)) %&gt;% 
+  group_by(trees) %&gt;% 
+  roc_curve(truth = Survived, .pred_1, event_level = &quot;second&quot;) %&gt;% 
+  ggplot(aes(x = 1- specificity, y = sensitivity, color = trees)) +
+  geom_path() +
+  coord_equal() +
+  geom_abline(lty = 3, alpha = 0.6) </code></pre>
+<p><img src="/post/2020-09-02-random-forest-hyperparametertuning-mit-tidymodels-im-rahmen-der-kaggle-machine-learning-competition-titanic.de_files/figure-html/unnamed-chunk-18-3.png" width="672" /></p>
+<p>Was den Verlauf der <em>ROC Kurve</em> betrifft, so hat <em>mtry</em> keinen wesentlichen Einfluss, solange mtry größer als 1 ist. Die Roc Kurven unterschieden sich für verschiedene Werte von <em>min_n</em> ebenfalls nur geringfügig. Die Anzahl der Bäume pro Random Forest spielt für den Verlauf der ROC Kurve keine Rolle, solange die Anzahl mindestens 500 beträgt.</p>
+</div>
+</div>
+<div id="auswahl-der-werte-der-hyperparameter" class="section level3">
+<h3>Auswahl der Werte der Hyperparameter</h3>
+<p>Nachdem wir visuell untersucht haben, welche Hyperparameterwerte sinnvoll erscheinen, wählen wir nun auf analytischerem Weg die endgültigen Werte der Hyperparameter. Dazu verwenden wir als Metriken sowohl die durchschnittliche Accuracy über alle 10 Folds, als auch den Standardfehler der 10 Accuracy Werte pro Parameterkombination. Zwar möchten wir ein Modell mit möglichst hoher durchschnittlicher Accuracy, allerdings ist es auch wichtig, eine Parameterkombination zu wählen, die bei Anwendung auf verschiedenen Datensätzen keine allzu schwankende Performance liefert. Dies ist insbesondere unter dem Aspekt wichtig, dass wie bei der Kaggle Competition Prognosen für nur einen Datensatz liefern müssen bzw. können und nicht wie bei der Cross Validation sozusagen 10 Versuche pro Parameterkombination haben, wobei nur der Durchschnittswert zählt. Dazu speichern wir jeweils die Parameterwerte der gemäß <em>Accuracy</em> bzw. <em>Standardfehler der Accuracywerte</em> 20 besten Modelle.</p>
+<pre class="r"><code>cv_rf &lt;-tune_rf %&gt;% 
+  collect_metrics()
+
+best_accuracy &lt;- tune_rf %&gt;% 
+  show_best(metric = &quot;accuracy&quot;, n = 20) %&gt;% 
+  arrange(std_err)
+
+best_accuracy %&gt;% 
+  knitr::kable() %&gt;% 
+  kable_styling(bootstrap_options = c(&quot;striped&quot;, &quot;hover&quot;),
+                font_size = 13) %&gt;% 
+  scroll_box(height = &quot;300px&quot;)</code></pre>
+<div style="border: 1px solid #ddd; padding: 0px; overflow-y: scroll; height:300px; ">
+<table class="table table-striped table-hover" style="font-size: 13px; margin-left: auto; margin-right: auto;">
+<thead>
+<tr>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+mtry
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+trees
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+min_n
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+.metric
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+.estimator
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+mean
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+n
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+std_err
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+.config
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+23
+</td>
+<td style="text-align:left;">
+accuracy
+</td>
+<td style="text-align:left;">
+binary
+</td>
+<td style="text-align:right;">
+0.8355795
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:right;">
+0.0113953
+</td>
+<td style="text-align:left;">
+Model207
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+23
+</td>
+<td style="text-align:left;">
+accuracy
+</td>
+<td style="text-align:left;">
+binary
+</td>
+<td style="text-align:right;">
+0.8326383
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:right;">
+0.0116948
+</td>
+<td style="text-align:left;">
+Model193
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+23
+</td>
+<td style="text-align:left;">
+accuracy
+</td>
+<td style="text-align:left;">
+binary
+</td>
+<td style="text-align:right;">
+0.8341308
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:right;">
+0.0118343
+</td>
+<td style="text-align:left;">
+Model179
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+29
+</td>
+<td style="text-align:left;">
+accuracy
+</td>
+<td style="text-align:left;">
+binary
+</td>
+<td style="text-align:right;">
+0.8340430
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:right;">
+0.0121825
+</td>
+<td style="text-align:left;">
+Model220
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+29
+</td>
+<td style="text-align:left;">
+accuracy
+</td>
+<td style="text-align:left;">
+binary
+</td>
+<td style="text-align:right;">
+0.8340430
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:right;">
+0.0121825
+</td>
+<td style="text-align:left;">
+Model234
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+18
+</td>
+<td style="text-align:left;">
+accuracy
+</td>
+<td style="text-align:left;">
+binary
+</td>
+<td style="text-align:right;">
+0.8326389
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:right;">
+0.0123361
+</td>
+<td style="text-align:left;">
+Model165
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+4
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+23
+</td>
+<td style="text-align:left;">
+accuracy
+</td>
+<td style="text-align:left;">
+binary
+</td>
+<td style="text-align:right;">
+0.8326383
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:right;">
+0.0124897
+</td>
+<td style="text-align:left;">
+Model200
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+23
+</td>
+<td style="text-align:left;">
+accuracy
+</td>
+<td style="text-align:left;">
+binary
+</td>
+<td style="text-align:right;">
+0.8385645
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:right;">
+0.0127936
+</td>
+<td style="text-align:left;">
+Model178
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+23
+</td>
+<td style="text-align:left;">
+accuracy
+</td>
+<td style="text-align:left;">
+binary
+</td>
+<td style="text-align:right;">
+0.8370720
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:right;">
+0.0128932
+</td>
+<td style="text-align:left;">
+Model185
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+18
+</td>
+<td style="text-align:left;">
+accuracy
+</td>
+<td style="text-align:left;">
+binary
+</td>
+<td style="text-align:right;">
+0.8370494
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:right;">
+0.0129054
+</td>
+<td style="text-align:left;">
+Model157
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+18
+</td>
+<td style="text-align:left;">
+accuracy
+</td>
+<td style="text-align:left;">
+binary
+</td>
+<td style="text-align:right;">
+0.8340863
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:right;">
+0.0130965
+</td>
+<td style="text-align:left;">
+Model164
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+29
+</td>
+<td style="text-align:left;">
+accuracy
+</td>
+<td style="text-align:left;">
+binary
+</td>
+<td style="text-align:right;">
+0.8340430
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:right;">
+0.0131592
+</td>
+<td style="text-align:left;">
+Model241
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+12
+</td>
+<td style="text-align:left;">
+accuracy
+</td>
+<td style="text-align:left;">
+binary
+</td>
+<td style="text-align:right;">
+0.8326157
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:right;">
+0.0133199
+</td>
+<td style="text-align:left;">
+Model108
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+18
+</td>
+<td style="text-align:left;">
+accuracy
+</td>
+<td style="text-align:left;">
+binary
+</td>
+<td style="text-align:right;">
+0.8385645
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:right;">
+0.0133398
+</td>
+<td style="text-align:left;">
+Model136
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+18
+</td>
+<td style="text-align:left;">
+accuracy
+</td>
+<td style="text-align:left;">
+binary
+</td>
+<td style="text-align:right;">
+0.8355795
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:right;">
+0.0133708
+</td>
+<td style="text-align:left;">
+Model143
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+23
+</td>
+<td style="text-align:left;">
+accuracy
+</td>
+<td style="text-align:left;">
+binary
+</td>
+<td style="text-align:right;">
+0.8385645
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:right;">
+0.0135240
+</td>
+<td style="text-align:left;">
+Model192
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+23
+</td>
+<td style="text-align:left;">
+accuracy
+</td>
+<td style="text-align:left;">
+binary
+</td>
+<td style="text-align:right;">
+0.8385645
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:right;">
+0.0135240
+</td>
+<td style="text-align:left;">
+Model206
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+accuracy
+</td>
+<td style="text-align:left;">
+binary
+</td>
+<td style="text-align:right;">
+0.8356014
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:right;">
+0.0137483
+</td>
+<td style="text-align:left;">
+Model023
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+23
+</td>
+<td style="text-align:left;">
+accuracy
+</td>
+<td style="text-align:left;">
+binary
+</td>
+<td style="text-align:right;">
+0.8400351
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:right;">
+0.0139487
+</td>
+<td style="text-align:left;">
+Model199
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+3
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+18
+</td>
+<td style="text-align:left;">
+accuracy
+</td>
+<td style="text-align:left;">
+binary
+</td>
+<td style="text-align:right;">
+0.8356014
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:right;">
+0.0154207
+</td>
+<td style="text-align:left;">
+Model150
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Die gemäß <em>Accuracy</em> besten Modelle weisen eine über alle 10 Folds gemittelte Accuracy zwischen 83% und 84% auf. Die Darstellung erfolgt nach Streuung (std_err) sortiert.</p>
+<pre class="r"><code>best_std &lt;- cv_rf %&gt;% 
+  filter(.metric == &quot;accuracy&quot;) %&gt;% 
+  arrange(std_err) %&gt;% 
+  head(n = 20) 
+best_std %&gt;% 
+  knitr::kable() %&gt;% 
+  kable_styling(bootstrap_options = c(&quot;striped&quot;, &quot;hover&quot;),
+                font_size = 13) %&gt;% 
+  scroll_box(height = &quot;300px&quot;)</code></pre>
+<div style="border: 1px solid #ddd; padding: 0px; overflow-y: scroll; height:300px; ">
+<table class="table table-striped table-hover" style="font-size: 13px; margin-left: auto; margin-right: auto;">
+<thead>
+<tr>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+mtry
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+trees
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+min_n
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+.metric
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+.estimator
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+mean
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+n
+</th>
+<th style="text-align:right;position: sticky; top:0; background-color: #FFFFFF;">
+std_err
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;">
+.config
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+40
+</td>
+<td style="text-align:left;">
+accuracy
+</td>
+<td style="text-align:left;">
+binary
+</td>
+<td style="text-align:right;">
+0.8071075
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:right;">
+0.0058506
+</td>
+<td style="text-align:left;">
+Model336
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+40
+</td>
+<td style="text-align:left;">
+accuracy
+</td>
+<td style="text-align:left;">
+binary
+</td>
+<td style="text-align:right;">
+0.8086000
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:right;">
+0.0067809
+</td>
+<td style="text-align:left;">
+Model322
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+40
+</td>
+<td style="text-align:left;">
+accuracy
+</td>
+<td style="text-align:left;">
+binary
+</td>
+<td style="text-align:right;">
+0.8086000
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:right;">
+0.0067809
+</td>
+<td style="text-align:left;">
+Model329
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+40
+</td>
+<td style="text-align:left;">
+accuracy
+</td>
+<td style="text-align:left;">
+binary
+</td>
+<td style="text-align:right;">
+0.8071075
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:right;">
+0.0070058
+</td>
+<td style="text-align:left;">
+Model315
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+40
+</td>
+<td style="text-align:left;">
+accuracy
+</td>
+<td style="text-align:left;">
+binary
+</td>
+<td style="text-align:right;">
+0.8100933
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:right;">
+0.0072176
+</td>
+<td style="text-align:left;">
+Model308
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+29
+</td>
+<td style="text-align:left;">
+accuracy
+</td>
+<td style="text-align:left;">
+binary
+</td>
+<td style="text-align:right;">
+0.8116969
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:right;">
+0.0073757
+</td>
+<td style="text-align:left;">
+Model252
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+40
+</td>
+<td style="text-align:left;">
+accuracy
+</td>
+<td style="text-align:left;">
+binary
+</td>
+<td style="text-align:right;">
+0.8145935
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:right;">
+0.0075619
+</td>
+<td style="text-align:left;">
+Model307
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+40
+</td>
+<td style="text-align:left;">
+accuracy
+</td>
+<td style="text-align:left;">
+binary
+</td>
+<td style="text-align:right;">
+0.8100933
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:right;">
+0.0078641
+</td>
+<td style="text-align:left;">
+Model314
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+34
+</td>
+<td style="text-align:left;">
+accuracy
+</td>
+<td style="text-align:left;">
+binary
+</td>
+<td style="text-align:right;">
+0.8087118
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:right;">
+0.0078841
+</td>
+<td style="text-align:left;">
+Model280
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+40
+</td>
+<td style="text-align:left;">
+accuracy
+</td>
+<td style="text-align:left;">
+binary
+</td>
+<td style="text-align:right;">
+0.8131009
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:right;">
+0.0078911
+</td>
+<td style="text-align:left;">
+Model328
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+40
+</td>
+<td style="text-align:left;">
+accuracy
+</td>
+<td style="text-align:left;">
+binary
+</td>
+<td style="text-align:right;">
+0.8176012
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:right;">
+0.0080407
+</td>
+<td style="text-align:left;">
+Model313
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+34
+</td>
+<td style="text-align:left;">
+accuracy
+</td>
+<td style="text-align:left;">
+binary
+</td>
+<td style="text-align:right;">
+0.8116749
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:right;">
+0.0080650
+</td>
+<td style="text-align:left;">
+Model273
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+40
+</td>
+<td style="text-align:left;">
+accuracy
+</td>
+<td style="text-align:left;">
+binary
+</td>
+<td style="text-align:right;">
+0.8116084
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:right;">
+0.0081770
+</td>
+<td style="text-align:left;">
+Model321
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+34
+</td>
+<td style="text-align:left;">
+accuracy
+</td>
+<td style="text-align:left;">
+binary
+</td>
+<td style="text-align:right;">
+0.8102043
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:right;">
+0.0082809
+</td>
+<td style="text-align:left;">
+Model266
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+34
+</td>
+<td style="text-align:left;">
+accuracy
+</td>
+<td style="text-align:left;">
+binary
+</td>
+<td style="text-align:right;">
+0.8220794
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:right;">
+0.0082810
+</td>
+<td style="text-align:left;">
+Model274
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+5
+</td>
+<td style="text-align:right;">
+500
+</td>
+<td style="text-align:right;">
+40
+</td>
+<td style="text-align:left;">
+accuracy
+</td>
+<td style="text-align:left;">
+binary
+</td>
+<td style="text-align:right;">
+0.8190491
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:right;">
+0.0083412
+</td>
+<td style="text-align:left;">
+Model306
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+1000
+</td>
+<td style="text-align:right;">
+23
+</td>
+<td style="text-align:left;">
+accuracy
+</td>
+<td style="text-align:left;">
+binary
+</td>
+<td style="text-align:right;">
+0.8177561
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:right;">
+0.0086040
+</td>
+<td style="text-align:left;">
+Model188
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+7
+</td>
+<td style="text-align:right;">
+2000
+</td>
+<td style="text-align:right;">
+34
+</td>
+<td style="text-align:left;">
+accuracy
+</td>
+<td style="text-align:left;">
+binary
+</td>
+<td style="text-align:right;">
+0.8131675
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:right;">
+0.0086765
+</td>
+<td style="text-align:left;">
+Model287
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+1500
+</td>
+<td style="text-align:right;">
+23
+</td>
+<td style="text-align:left;">
+accuracy
+</td>
+<td style="text-align:left;">
+binary
+</td>
+<td style="text-align:right;">
+0.8177122
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:right;">
+0.0087017
+</td>
+<td style="text-align:left;">
+Model195
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+6
+</td>
+<td style="text-align:right;">
+2500
+</td>
+<td style="text-align:right;">
+40
+</td>
+<td style="text-align:left;">
+accuracy
+</td>
+<td style="text-align:left;">
+binary
+</td>
+<td style="text-align:right;">
+0.8131236
+</td>
+<td style="text-align:right;">
+10
+</td>
+<td style="text-align:right;">
+0.0087449
+</td>
+<td style="text-align:left;">
+Model335
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<pre class="r"><code>best_params &lt;- best_accuracy %&gt;% 
+  slice_head(n = 1) %&gt;% 
+  select(mtry, trees, min_n)</code></pre>
+<p>Bei den gemäß <em>Standardfehler der Accuracywerte</em> besten Modellen beträgt die durchschnittliche Accuracy zwischen 80% und 82%. Als endgültige Parameter wählen wir die Werte des Modells, dass unter den gemäß Accuracy 20 besten Modellen die geringste Streuung aufweist. Dieses Modell erzielte bei der Cross Validation eine deutlich überdurchschnittliche Accuracy und gleichzeitig eine unterdurchschnittliche Streuung. Der jeweilige Wert des gewählten Modells ist in den Boxplots durch einen roten Punkt gekennzeichnet.</p>
+<pre class="r"><code>best_params_metrics &lt;- best_accuracy %&gt;% 
+  slice_head(n = 1) %&gt;% 
+  select(Accuracy = mean, Streuung = std_err)
+
+ref_point &lt;- best_params_metrics %&gt;% 
+  pivot_longer(Accuracy:Streuung, names_to = &quot;metric&quot;, values_to = &quot;values&quot;)
+
+cv_rf %&gt;% 
+  filter(.metric == &quot;accuracy&quot;) %&gt;% 
+  select(Accuracy = mean, Streuung = std_err) %&gt;% 
+  pivot_longer(Accuracy:Streuung, names_to = &quot;metric&quot;, values_to = &quot;value&quot;) %&gt;% 
+  ggplot(aes(value)) +
+  geom_boxplot() +
+  geom_point(data = ref_point, aes(x = values, y = 0), color = &quot;red&quot;, size = 3) +
+  facet_wrap(~metric, scales = &quot;free&quot;) +
+  labs(x = &quot;&quot;, y = &quot;&quot;)</code></pre>
+<p><img src="/post/2020-09-02-random-forest-hyperparametertuning-mit-tidymodels-im-rahmen-der-kaggle-machine-learning-competition-titanic.de_files/figure-html/unnamed-chunk-20-1.png" width="672" /></p>
+<p>Somit verwenden wir sowohl zur Validierung am Testdatensatz als auch zur Prognose am Datensatz <em>titanic_holdout</em> die Parameterwerte:</p>
+<ul>
+<li>mtry = 4</li>
+<li>trees = 2500</li>
+<li>min_n = 23</li>
+</ul>
+<p>Abschließend testen wir das Modell an dem Testdatensatz <em>titanic_test</em>, der nicht zur Model Selection verwendet wurde. Dieser Test dient dazu, eine realistische Einschätzung bezüglich der Performance unseres Modells an neuen Daten zu erhalten.</p>
+<pre class="r"><code>set.seed(1234)
+
+rf_fit_split &lt;- rf_wflow %&gt;%
+  finalize_workflow(parameters = best_params) %&gt;%
+  last_fit(split = titanic_split)
+
+test_metrics &lt;- rf_fit_split %&gt;%
+  collect_metrics() 
+
+test_metrics %&gt;% 
+  knitr::kable()</code></pre>
+<table>
+<thead>
+<tr>
+<th style="text-align:left;">
+.metric
+</th>
+<th style="text-align:left;">
+.estimator
+</th>
+<th style="text-align:right;">
+.estimate
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+accuracy
+</td>
+<td style="text-align:left;">
+binary
+</td>
+<td style="text-align:right;">
+0.8288288
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+roc_auc
+</td>
+<td style="text-align:left;">
+binary
+</td>
+<td style="text-align:right;">
+0.8823100
+</td>
+</tr>
+</tbody>
+</table>
+<p>Bei der Prognose an dem Testdatensatz <em>titanic_test</em> erzielt das Modell eine Accuracy von 82.9%.</p>
+<p>Die wichtigsten Prädiktoren unseres Modells können mit der Funktion <em>vip()</em> visualisiert werden.</p>
+<pre class="r"><code>rf_fit_split %&gt;%
+  pluck(&quot;.workflow&quot;, 1) %&gt;%
+  pull_workflow_fit() %&gt;%
+  vip(num_features = 7)</code></pre>
+<p><img src="/post/2020-09-02-random-forest-hyperparametertuning-mit-tidymodels-im-rahmen-der-kaggle-machine-learning-competition-titanic.de_files/figure-html/unnamed-chunk-22-1.png" width="672" /></p>
+<p>Die wichtigste Variable ist mit Abstand das Geschlecht, gefolgt von der Höhe des Ticketpreises und dem Alter.</p>
+</div>
+</div>
+<div id="kaggle-submission" class="section level2">
+<h2>Kaggle Submission</h2>
+<p>Abschließend erstellen wir die Prediction für die Submission auf Kaggle.</p>
+<pre class="r"><code>last_rf_fit &lt;- rf_wflow %&gt;%
+  finalize_workflow(parameters = best_params) %&gt;%
+  fit(data = titanic)
+
+titanic_holdout &lt;- titanic_holdout %&gt;% 
+  mutate(Survived = NA)
+
+final_pred &lt;- last_rf_fit %&gt;% 
+  extract_model() %&gt;% 
+  predict(bake(titanic_rec, titanic_holdout), type = &quot;response&quot;) 
+  
+final_pred_binary &lt;- ifelse(final_pred$predictions[,2] &gt; 0.5, 1, 0) %&gt;% factor(levels = c(0, 1))
+
+submission_df &lt;- data.frame(PassengerId = titanic_holdout$PassengerId,
+                            Survived = final_pred_binary)
+
+write_csv(submission_df, &quot;submission_kaggle.csv&quot;)</code></pre>
+<p>Das Modell erzielt bei der Competition eine Accuracy von 79.2%. Damit liegt das Modell unter den Top 8% der Submissions.</p>
+</div>

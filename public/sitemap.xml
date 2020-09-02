@@ -18,12 +18,37 @@
   </url>
   
   <url>
-    <loc>/post/hyperparametertuning-mit-cross-validation/</loc>
-    <lastmod>2020-08-23T19:43:03+02:00</lastmod>
+    <loc>/tag/hyperparametertuning/</loc>
+    <lastmod>2020-09-02T16:25:09+02:00</lastmod>
   </url>
   
   <url>
     <loc>/post/</loc>
+    <lastmod>2020-09-02T16:25:09+02:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tag/predictive-modeling/</loc>
+    <lastmod>2020-09-02T16:25:09+02:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/post/random-forest-hyperparametertuning-mit-tidymodels-im-rahmen-der-kaggle-machine-learning-competition-titanic/</loc>
+    <lastmod>2020-09-02T16:25:09+02:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tags/</loc>
+    <lastmod>2020-09-02T16:25:09+02:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tag/tidymodels/</loc>
+    <lastmod>2020-09-02T16:25:09+02:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/post/hyperparametertuning-mit-cross-validation/</loc>
     <lastmod>2020-08-23T19:43:03+02:00</lastmod>
   </url>
   
@@ -59,11 +84,6 @@
   
   <url>
     <loc>/tag/source-themes/</loc>
-    <lastmod>2019-04-07T00:00:00+00:00</lastmod>
-  </url>
-  
-  <url>
-    <loc>/tags/</loc>
     <lastmod>2019-04-07T00:00:00+00:00</lastmod>
   </url>
   
@@ -119,10 +139,6 @@
   
   <url>
     <loc>/categories/</loc>
-  </url>
-  
-  <url>
-    <loc>/post/kaggle_titanic_versuch2/</loc>
   </url>
   
   <url>
