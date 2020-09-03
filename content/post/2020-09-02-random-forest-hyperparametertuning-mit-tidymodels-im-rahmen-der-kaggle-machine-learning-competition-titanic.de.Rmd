@@ -291,7 +291,7 @@ Die Modellierung mit *tidymodels* kann in folgende Schritte unterteilt werden. Z
 
 ### Recipe
 
-Zunächst wird mit der Funktion *recipe()* festgelegt, welche Pre-Processing Schritte durchzuführen sind. Hier wird umgesetzt, was wie im Rahmen der explorativen Datenanalysen herausgefunden haben. *PClass* und *Survived* werden zu Faktorvariablen umgewandelt. Fehlende Werte der Variablen *Age* und *Embarked* werden per *Bagging* geschätzt und auf die Variable *Fare* wird die Yeo-Johnson Transformation angewendet.
+Zunächst wird mit der Funktion *recipe()* festgelegt, welche Pre-Processing Schritte durchzuführen sind. Hier wird umgesetzt, was wir im Rahmen der explorativen Datenanalysen herausgefunden haben. *PClass* und *Survived* werden zu Faktorvariablen umgewandelt. Fehlende Werte der Variablen *Age* und *Embarked* werden per *Bagging* geschätzt und auf die Variable *Fare* wird die Yeo-Johnson Transformation angewendet.
 
 ```{r Recipe}
 titanic_rec <- recipe(Survived ~ ., data = titanic_train) %>%
@@ -357,7 +357,7 @@ titanic_train_folds <- vfold_cv(titanic_train, strata = Survived)
 titanic_train_folds 
 ```
 
-Wir bilden ein Grid, dass alle Kombinationen aus den Werten der Hyperparameter enthält. Wir versuchen 7 verschiedene Werte für die Anzahl der pro Split des jeweiligen Decision Trees verwendeten Prädiktoren (*mtry*), 5 verschiedene Werte für die Anzahl der pro Random Forest verwendeten Decision Trees (*trees*) und 8 verschiedene Werte für die minimale Anzahl an Observationen die in einem Knoten eines Decision Trees notwendig ist, um einen Split dieses Knotens in Erwägung zu ziehen. Die Spanne der betrachteten Werte für *mtry* wird auf 1 bis 7 festgelegt.
+Wir bilden ein Grid, dass alle Kombinationen aus den Werten der Hyperparameter enthält. Wir versuchen 7 verschiedene Werte für die Anzahl der pro Split des jeweiligen Decision Trees verwendeten Prädiktoren (*mtry*), 6 verschiedene Werte für die Anzahl der pro Random Forest verwendeten Decision Trees (*trees*) und 8 verschiedene Werte für die minimale Anzahl an Observationen, die in einem Knoten eines Decision Trees notwendig ist, um einen Split dieses Knotens in Erwägung zu ziehen. Die Spanne der betrachteten Werte für *mtry* wird auf 1 bis 7 festgelegt.
 
 ```{r}
 rf_param <- parameters(rf_spec) %>% 
@@ -380,7 +380,7 @@ all_cores <- parallel::detectCores(logical = FALSE)
 doParallel::registerDoParallel(cores = all_cores)
 ```
 
-In diesem Schritt findet das Training der 2800 Random Forests im Rahmen des Hyperparametertunings statt. Dazu wird der bereits definierte Workflow zusammen mit dem bereits spezifizierten Grid der zu testenden Parameterwerte und den gebildeten Folds in der Funktion *tune_grid* verwendet.
+In diesem Schritt findet das Training der `r nrow(grid_rf) * 10` Random Forests im Rahmen des Hyperparametertunings statt. Dazu wird der bereits definierte Workflow zusammen mit dem bereits spezifizierten Grid der zu testenden Parameterwerte und den gebildeten Folds in der Funktion *tune_grid* verwendet.
 
 ```{r}
 
@@ -399,7 +399,7 @@ Nachdem die Modelle trainiert wurden, visualisieren wir die Ergebnisse der Cross
 
 #### Accuracy und AUC
 
-Als mögliche Werte für die Anzahl der verwendeten Trees pro Random Forest wurden die Werte 1, 500, 1000, 1500 und 2000 verwendet. 
+Als mögliche Werte für die Anzahl der verwendeten Trees pro Random Forest wurden die Werte 1, 500, 1000, 1500, 2000 und 2500 verwendet. 
 
 ```{r}
 tune_rf %>% 
@@ -414,7 +414,7 @@ tune_rf %>%
        y = "Accuracy")
 ```
 
-Die Grafik zeigt, dass -wie zu erwarten- die am schlechtesten performenden Modelle solche sind, die nur aus einem Tree bestehen. Ob 500, 1000, 15000, 2000 oder 2500 Trees pro Random Forest verwendet werden, scheint keinen Unterschied zu machen. Die Modelle mit einer *Minimal Node Size* (*min_n*) von etwa 20 bis 25 scheinen die besten Ergebnisse für die Metrik *Accuracy* zu erzielen. Für die Metrik *Area under the Curve (AUC)* spielt die Wahl der Hyperparameter insgesamt keine große Rolle, solange man mindestens 500 Trees pro Random Forest verwendet. Für die Anzahl der pro Knoten betrachteten Prädiktoren scheint ein Wert von etwa 3 gut zu funktionieren, wenn man die Kurven für die Accuracy betrachtet. Dieser Eindruck wird durch die nachfolgende Grafik bestätigt.
+Die Grafik zeigt, dass -wie zu erwarten- die am schlechtesten performenden Modelle solche sind, die nur aus einem Tree bestehen. Ob 500, 1000, 15000, 2000 oder 2500 Trees pro Random Forest verwendet werden, scheint keinen Unterschied zu machen. Die Modelle mit einer *Minimal Node Size* (*min_n*) von etwa 20 bis 25 scheinen die besten Ergebnisse für die Metrik *Accuracy* zu erzielen. Für die Anzahl der pro Knoten betrachteten Prädiktoren scheint ein Wert von etwa 3 gut zu funktionieren, wenn man die Kurven für die Accuracy betrachtet. Dieser Eindruck wird durch die nachfolgende Grafik bestätigt.
 
 ```{r, fig.height = 3}
 tune_rf %>% 
@@ -434,7 +434,7 @@ tune_rf %>%
 
 #### ROC 
 
-Wir visualisieren die ROC Kurven, wobei wir jeweils die Kurven durch eine der drei Hyperparameter gruppieren und einfärben.
+Wir visualisieren die ROC Kurven, wobei wir jeweils die Kurven durch eine der drei Hyperparameter gruppieren und einfärben. Für die Metrik *Area under the Curve (AUC)* spielt die Wahl der Hyperparameter insgesamt keine große Rolle, solange man mindestens 500 Trees pro Random Forest verwendet.
 
 ```{r}
 tune_rf %>% 
@@ -476,7 +476,7 @@ Was den Verlauf der *ROC Kurve* betrifft, so hat *mtry* keinen wesentlichen Einf
 
 ### Auswahl der Werte der Hyperparameter
 
-Nachdem wir visuell untersucht haben, welche Hyperparameterwerte sinnvoll erscheinen, wählen wir nun auf analytischerem Weg die endgültigen Werte der Hyperparameter. Dazu verwenden wir als Metriken sowohl die durchschnittliche Accuracy über alle 10 Folds, als auch den Standardfehler der 10 Accuracy Werte pro Parameterkombination. Zwar möchten wir ein Modell mit möglichst hoher durchschnittlicher Accuracy, allerdings ist es auch wichtig, eine Parameterkombination zu wählen, die bei Anwendung auf verschiedenen Datensätzen keine allzu schwankende Performance liefert. Dies ist insbesondere unter dem Aspekt wichtig, dass wie bei der Kaggle Competition Prognosen für nur einen Datensatz liefern müssen bzw. können und nicht wie bei der Cross Validation sozusagen 10 Versuche pro Parameterkombination haben, wobei nur der Durchschnittswert zählt. Dazu speichern wir jeweils die Parameterwerte der gemäß *Accuracy* bzw. *Standardfehler der Accuracywerte* 20 besten Modelle. 
+Nachdem wir visuell untersucht haben, welche Hyperparameterwerte sinnvoll erscheinen, wählen wir nun die endgültigen Werte der Hyperparameter. Dazu verwenden wir als Metriken sowohl die durchschnittliche Accuracy über alle 10 Folds, als auch den Standardfehler der 10 Accuracy Werte pro Parameterkombination. Zwar möchten wir ein Modell mit möglichst hoher durchschnittlicher Accuracy, allerdings ist es auch wichtig, eine Parameterkombination zu wählen, die bei Anwendung auf verschiedenen Datensätzen keine allzu schwankende Performance liefert. Dies ist insbesondere unter dem Aspekt wichtig, dass wie bei der Kaggle Competition Prognosen für nur einen Datensatz liefern müssen bzw. können und nicht wie bei der Cross Validation sozusagen 10 Versuche pro Parameterkombination haben, wobei nur der Durchschnittswert zählt. Dazu speichern wir jeweils die Parameterwerte der gemäß *Accuracy* bzw. *Standardfehler der Accuracywerte* 20 besten Modelle. 
 
 ```{r Select Best Hyperparameter Values}
 
@@ -515,7 +515,7 @@ best_params <- best_accuracy %>%
 
 ```
 
-Bei den gemäß *Standardfehler der Accuracywerte* besten Modellen beträgt die durchschnittliche Accuracy zwischen 80% und 82%. Als endgültige Parameter wählen wir die Werte des Modells, dass unter den gemäß Accuracy 20 besten Modellen die geringste Streuung aufweist. Dieses Modell erzielte bei der Cross Validation eine deutlich überdurchschnittliche Accuracy und gleichzeitig eine unterdurchschnittliche Streuung. Der jeweilige Wert des gewählten Modells ist in den Boxplots durch einen roten Punkt gekennzeichnet.
+Bei den gemäß *Standardfehler der Accuracywerte* besten Modellen beträgt die durchschnittliche Accuracy zwischen 80% und 82%. Als endgültige Parameter wählen wir die Werte des Modells, dass unter den gemäß Accuracy 20 besten Modellen die geringste Streuung aufweist. Dieses Modell erzielte bei der Cross Validation eine deutlich überdurchschnittliche Accuracy und gleichzeitig eine unterdurchschnittliche Streuung. Der jeweilige Wert des gewählten Modells ist in den folgenden Boxplots durch einen roten Punkt gekennzeichnet.
 
 ```{r, fig.height = 3}
 best_params_metrics <- best_accuracy %>% 
@@ -543,7 +543,7 @@ Somit verwenden wir sowohl zur Validierung am Testdatensatz als auch zur Prognos
 * trees = `r best_params %>% select(trees) %>% as_vector()`
 * min_n = `r best_params %>% select(min_n) %>% as_vector()`
 
-Abschließend testen wir das Modell an dem Testdatensatz *titanic_test*, der nicht zur Model Selection verwendet wurde. Dieser Test dient dazu, eine realistische Einschätzung bezüglich der Performance unseres Modells an neuen Daten zu erhalten.
+Abschließend testen wir das Modell an dem Testdatensatz *titanic_test*, der nicht zur *Model Selection* verwendet wurde. Dieser Test dient dazu, eine realistische Einschätzung bezüglich der Performance unseres Modells an neuen Daten zu erhalten.
 
 ```{r Modeltest}
 set.seed(1234)
@@ -583,7 +583,7 @@ Die wichtigste Variable ist mit Abstand das Geschlecht, gefolgt von der Höhe de
 
 ## Kaggle Submission
 
-Abschließend erstellen wir die Prediction für die Submission auf Kaggle.
+Abschließend erstellen wir die *Prediction* für die Submission auf Kaggle.
 
 ```{r}
 last_rf_fit <- rf_wflow %>%
@@ -597,7 +597,9 @@ final_pred <- last_rf_fit %>%
   extract_model() %>% 
   predict(bake(titanic_rec, titanic_holdout), type = "response") 
   
-final_pred_binary <- ifelse(final_pred$predictions[,2] > 0.5, 1, 0) %>% factor(levels = c(0, 1))
+final_pred_binary <- 
+  ifelse(final_pred$predictions[,2] > 0.5, 1, 0) %>% 
+  factor(levels = c(0, 1))
 
 submission_df <- data.frame(PassengerId = titanic_holdout$PassengerId,
                             Survived = final_pred_binary)

@@ -281,7 +281,7 @@ titanic_test &amp;lt;- testing(titanic_split)&lt;/code&gt;&lt;/pre&gt;
 &lt;p&gt;Die Modellierung mit &lt;em&gt;tidymodels&lt;/em&gt; kann in folgende Schritte unterteilt werden. Zunächst wird ein sogenanntes &lt;em&gt;Rezept&lt;/em&gt; erstellt, dass alle Pre-Processing Schritte wie Imputation und Transformationen von Variablen umfasst. Danach wird die sogenannte Modellspezifikation vorgenommen. Danach werden &lt;em&gt;Rezept&lt;/em&gt; und &lt;em&gt;Modellspezifikation&lt;/em&gt; im sogenannten &lt;em&gt;Workflow&lt;/em&gt; zusammengefasst. Dieser Workflow wird dann genutzt, um das Hyperparametertuning, die Validierung des besten Modells und die abschließende Prognose für die Competition zu erstellen.&lt;/p&gt;
 &lt;div id=&#34;recipe&#34; class=&#34;section level3&#34;&gt;
 &lt;h3&gt;Recipe&lt;/h3&gt;
-&lt;p&gt;Zunächst wird mit der Funktion &lt;em&gt;recipe()&lt;/em&gt; festgelegt, welche Pre-Processing Schritte durchzuführen sind. Hier wird umgesetzt, was wie im Rahmen der explorativen Datenanalysen herausgefunden haben. &lt;em&gt;PClass&lt;/em&gt; und &lt;em&gt;Survived&lt;/em&gt; werden zu Faktorvariablen umgewandelt. Fehlende Werte der Variablen &lt;em&gt;Age&lt;/em&gt; und &lt;em&gt;Embarked&lt;/em&gt; werden per &lt;em&gt;Bagging&lt;/em&gt; geschätzt und auf die Variable &lt;em&gt;Fare&lt;/em&gt; wird die Yeo-Johnson Transformation angewendet.&lt;/p&gt;
+&lt;p&gt;Zunächst wird mit der Funktion &lt;em&gt;recipe()&lt;/em&gt; festgelegt, welche Pre-Processing Schritte durchzuführen sind. Hier wird umgesetzt, was wir im Rahmen der explorativen Datenanalysen herausgefunden haben. &lt;em&gt;PClass&lt;/em&gt; und &lt;em&gt;Survived&lt;/em&gt; werden zu Faktorvariablen umgewandelt. Fehlende Werte der Variablen &lt;em&gt;Age&lt;/em&gt; und &lt;em&gt;Embarked&lt;/em&gt; werden per &lt;em&gt;Bagging&lt;/em&gt; geschätzt und auf die Variable &lt;em&gt;Fare&lt;/em&gt; wird die Yeo-Johnson Transformation angewendet.&lt;/p&gt;
 &lt;pre class=&#34;r&#34;&gt;&lt;code&gt;titanic_rec &amp;lt;- recipe(Survived ~ ., data = titanic_train) %&amp;gt;%
   update_role(PassengerId, new_role = &amp;quot;ID&amp;quot;) %&amp;gt;% 
   step_mutate(Pclass = factor(Pclass, labels = c(&amp;quot;first&amp;quot;, &amp;quot;second&amp;quot;, &amp;quot;third&amp;quot;)) %&amp;gt;% 
@@ -339,7 +339,7 @@ titanic_train_folds &lt;/code&gt;&lt;/pre&gt;
 ##  8 &amp;lt;split [603/66]&amp;gt; Fold08
 ##  9 &amp;lt;split [603/66]&amp;gt; Fold09
 ## 10 &amp;lt;split [603/66]&amp;gt; Fold10&lt;/code&gt;&lt;/pre&gt;
-&lt;p&gt;Wir bilden ein Grid, dass alle Kombinationen aus den Werten der Hyperparameter enthält. Wir versuchen 7 verschiedene Werte für die Anzahl der pro Split des jeweiligen Decision Trees verwendeten Prädiktoren (&lt;em&gt;mtry&lt;/em&gt;), 5 verschiedene Werte für die Anzahl der pro Random Forest verwendeten Decision Trees (&lt;em&gt;trees&lt;/em&gt;) und 8 verschiedene Werte für die minimale Anzahl an Observationen die in einem Knoten eines Decision Trees notwendig ist, um einen Split dieses Knotens in Erwägung zu ziehen. Die Spanne der betrachteten Werte für &lt;em&gt;mtry&lt;/em&gt; wird auf 1 bis 7 festgelegt.&lt;/p&gt;
+&lt;p&gt;Wir bilden ein Grid, dass alle Kombinationen aus den Werten der Hyperparameter enthält. Wir versuchen 7 verschiedene Werte für die Anzahl der pro Split des jeweiligen Decision Trees verwendeten Prädiktoren (&lt;em&gt;mtry&lt;/em&gt;), 6 verschiedene Werte für die Anzahl der pro Random Forest verwendeten Decision Trees (&lt;em&gt;trees&lt;/em&gt;) und 8 verschiedene Werte für die minimale Anzahl an Observationen, die in einem Knoten eines Decision Trees notwendig ist, um einen Split dieses Knotens in Erwägung zu ziehen. Die Spanne der betrachteten Werte für &lt;em&gt;mtry&lt;/em&gt; wird auf 1 bis 7 festgelegt.&lt;/p&gt;
 &lt;pre class=&#34;r&#34;&gt;&lt;code&gt;rf_param &amp;lt;- parameters(rf_spec) %&amp;gt;% 
   update(mtry = mtry(range = c(1, 7)),
          trees = trees(range = c(1, 2500))) %&amp;gt;% 
@@ -4069,7 +4069,7 @@ min_n
 &lt;p&gt;Insgesamt erhalten wir 336 Kombinationsmöglichkeiten für die Hyperparameter. Für jede dieser Kombinationen wird pro Fold ein Random Forest mit jeweils bis zu 2500 Decision Trees trainiert. Das ergibt insgesamt 3360 Random Forests. Um die Zeit zu reduzieren, die für das Trainieren all dieser Random Forests bzw. Decision Trees notwendig ist, verwenden wir &lt;em&gt;Parallel Processing&lt;/em&gt;.&lt;/p&gt;
 &lt;pre class=&#34;r&#34;&gt;&lt;code&gt;all_cores &amp;lt;- parallel::detectCores(logical = FALSE) 
 doParallel::registerDoParallel(cores = all_cores)&lt;/code&gt;&lt;/pre&gt;
-&lt;p&gt;In diesem Schritt findet das Training der 2800 Random Forests im Rahmen des Hyperparametertunings statt. Dazu wird der bereits definierte Workflow zusammen mit dem bereits spezifizierten Grid der zu testenden Parameterwerte und den gebildeten Folds in der Funktion &lt;em&gt;tune_grid&lt;/em&gt; verwendet.&lt;/p&gt;
+&lt;p&gt;In diesem Schritt findet das Training der 3360 Random Forests im Rahmen des Hyperparametertunings statt. Dazu wird der bereits definierte Workflow zusammen mit dem bereits spezifizierten Grid der zu testenden Parameterwerte und den gebildeten Folds in der Funktion &lt;em&gt;tune_grid&lt;/em&gt; verwendet.&lt;/p&gt;
 &lt;pre class=&#34;r&#34;&gt;&lt;code&gt;tune_rf &amp;lt;- tune_grid(
   rf_wflow,
   resamples = titanic_train_folds,
@@ -4082,7 +4082,7 @@ doParallel::registerDoParallel(cores = all_cores)&lt;/code&gt;&lt;/pre&gt;
 &lt;p&gt;Nachdem die Modelle trainiert wurden, visualisieren wir die Ergebnisse der Cross Validation.&lt;/p&gt;
 &lt;div id=&#34;accuracy-und-auc&#34; class=&#34;section level4&#34;&gt;
 &lt;h4&gt;Accuracy und AUC&lt;/h4&gt;
-&lt;p&gt;Als mögliche Werte für die Anzahl der verwendeten Trees pro Random Forest wurden die Werte 1, 500, 1000, 1500 und 2000 verwendet.&lt;/p&gt;
+&lt;p&gt;Als mögliche Werte für die Anzahl der verwendeten Trees pro Random Forest wurden die Werte 1, 500, 1000, 1500, 2000 und 2500 verwendet.&lt;/p&gt;
 &lt;pre class=&#34;r&#34;&gt;&lt;code&gt;tune_rf %&amp;gt;% 
   collect_metrics() %&amp;gt;% 
   filter(.metric == &amp;quot;accuracy&amp;quot;) %&amp;gt;% 
@@ -4094,7 +4094,7 @@ doParallel::registerDoParallel(cores = all_cores)&lt;/code&gt;&lt;/pre&gt;
   labs(x = &amp;quot;Minimal Node Size (min_n)&amp;quot;,
        y = &amp;quot;Accuracy&amp;quot;)&lt;/code&gt;&lt;/pre&gt;
 &lt;p&gt;&lt;img src=&#34;/post/2020-09-02-random-forest-hyperparametertuning-mit-tidymodels-im-rahmen-der-kaggle-machine-learning-competition-titanic.de_files/figure-html/unnamed-chunk-16-1.png&#34; width=&#34;672&#34; /&gt;&lt;/p&gt;
-&lt;p&gt;Die Grafik zeigt, dass -wie zu erwarten- die am schlechtesten performenden Modelle solche sind, die nur aus einem Tree bestehen. Ob 500, 1000, 15000, 2000 oder 2500 Trees pro Random Forest verwendet werden, scheint keinen Unterschied zu machen. Die Modelle mit einer &lt;em&gt;Minimal Node Size&lt;/em&gt; (&lt;em&gt;min_n&lt;/em&gt;) von etwa 20 bis 25 scheinen die besten Ergebnisse für die Metrik &lt;em&gt;Accuracy&lt;/em&gt; zu erzielen. Für die Metrik &lt;em&gt;Area under the Curve (AUC)&lt;/em&gt; spielt die Wahl der Hyperparameter insgesamt keine große Rolle, solange man mindestens 500 Trees pro Random Forest verwendet. Für die Anzahl der pro Knoten betrachteten Prädiktoren scheint ein Wert von etwa 3 gut zu funktionieren, wenn man die Kurven für die Accuracy betrachtet. Dieser Eindruck wird durch die nachfolgende Grafik bestätigt.&lt;/p&gt;
+&lt;p&gt;Die Grafik zeigt, dass -wie zu erwarten- die am schlechtesten performenden Modelle solche sind, die nur aus einem Tree bestehen. Ob 500, 1000, 15000, 2000 oder 2500 Trees pro Random Forest verwendet werden, scheint keinen Unterschied zu machen. Die Modelle mit einer &lt;em&gt;Minimal Node Size&lt;/em&gt; (&lt;em&gt;min_n&lt;/em&gt;) von etwa 20 bis 25 scheinen die besten Ergebnisse für die Metrik &lt;em&gt;Accuracy&lt;/em&gt; zu erzielen. Für die Anzahl der pro Knoten betrachteten Prädiktoren scheint ein Wert von etwa 3 gut zu funktionieren, wenn man die Kurven für die Accuracy betrachtet. Dieser Eindruck wird durch die nachfolgende Grafik bestätigt.&lt;/p&gt;
 &lt;pre class=&#34;r&#34;&gt;&lt;code&gt;tune_rf %&amp;gt;% 
   collect_metrics() %&amp;gt;%
   filter(.metric == &amp;quot;accuracy&amp;quot; &amp;amp; trees != 1) %&amp;gt;% 
@@ -4112,7 +4112,7 @@ doParallel::registerDoParallel(cores = all_cores)&lt;/code&gt;&lt;/pre&gt;
 &lt;/div&gt;
 &lt;div id=&#34;roc&#34; class=&#34;section level4&#34;&gt;
 &lt;h4&gt;ROC&lt;/h4&gt;
-&lt;p&gt;Wir visualisieren die ROC Kurven, wobei wir jeweils die Kurven durch eine der drei Hyperparameter gruppieren und einfärben.&lt;/p&gt;
+&lt;p&gt;Wir visualisieren die ROC Kurven, wobei wir jeweils die Kurven durch eine der drei Hyperparameter gruppieren und einfärben. Für die Metrik &lt;em&gt;Area under the Curve (AUC)&lt;/em&gt; spielt die Wahl der Hyperparameter insgesamt keine große Rolle, solange man mindestens 500 Trees pro Random Forest verwendet.&lt;/p&gt;
 &lt;pre class=&#34;r&#34;&gt;&lt;code&gt;tune_rf %&amp;gt;% 
   collect_predictions() %&amp;gt;% 
   mutate(mtry = factor(mtry)) %&amp;gt;% 
@@ -4148,7 +4148,7 @@ doParallel::registerDoParallel(cores = all_cores)&lt;/code&gt;&lt;/pre&gt;
 &lt;/div&gt;
 &lt;div id=&#34;auswahl-der-werte-der-hyperparameter&#34; class=&#34;section level3&#34;&gt;
 &lt;h3&gt;Auswahl der Werte der Hyperparameter&lt;/h3&gt;
-&lt;p&gt;Nachdem wir visuell untersucht haben, welche Hyperparameterwerte sinnvoll erscheinen, wählen wir nun auf analytischerem Weg die endgültigen Werte der Hyperparameter. Dazu verwenden wir als Metriken sowohl die durchschnittliche Accuracy über alle 10 Folds, als auch den Standardfehler der 10 Accuracy Werte pro Parameterkombination. Zwar möchten wir ein Modell mit möglichst hoher durchschnittlicher Accuracy, allerdings ist es auch wichtig, eine Parameterkombination zu wählen, die bei Anwendung auf verschiedenen Datensätzen keine allzu schwankende Performance liefert. Dies ist insbesondere unter dem Aspekt wichtig, dass wie bei der Kaggle Competition Prognosen für nur einen Datensatz liefern müssen bzw. können und nicht wie bei der Cross Validation sozusagen 10 Versuche pro Parameterkombination haben, wobei nur der Durchschnittswert zählt. Dazu speichern wir jeweils die Parameterwerte der gemäß &lt;em&gt;Accuracy&lt;/em&gt; bzw. &lt;em&gt;Standardfehler der Accuracywerte&lt;/em&gt; 20 besten Modelle.&lt;/p&gt;
+&lt;p&gt;Nachdem wir visuell untersucht haben, welche Hyperparameterwerte sinnvoll erscheinen, wählen wir nun die endgültigen Werte der Hyperparameter. Dazu verwenden wir als Metriken sowohl die durchschnittliche Accuracy über alle 10 Folds, als auch den Standardfehler der 10 Accuracy Werte pro Parameterkombination. Zwar möchten wir ein Modell mit möglichst hoher durchschnittlicher Accuracy, allerdings ist es auch wichtig, eine Parameterkombination zu wählen, die bei Anwendung auf verschiedenen Datensätzen keine allzu schwankende Performance liefert. Dies ist insbesondere unter dem Aspekt wichtig, dass wie bei der Kaggle Competition Prognosen für nur einen Datensatz liefern müssen bzw. können und nicht wie bei der Cross Validation sozusagen 10 Versuche pro Parameterkombination haben, wobei nur der Durchschnittswert zählt. Dazu speichern wir jeweils die Parameterwerte der gemäß &lt;em&gt;Accuracy&lt;/em&gt; bzw. &lt;em&gt;Standardfehler der Accuracywerte&lt;/em&gt; 20 besten Modelle.&lt;/p&gt;
 &lt;pre class=&#34;r&#34;&gt;&lt;code&gt;cv_rf &amp;lt;-tune_rf %&amp;gt;% 
   collect_metrics()
 
@@ -5408,7 +5408,7 @@ Model335
 &lt;pre class=&#34;r&#34;&gt;&lt;code&gt;best_params &amp;lt;- best_accuracy %&amp;gt;% 
   slice_head(n = 1) %&amp;gt;% 
   select(mtry, trees, min_n)&lt;/code&gt;&lt;/pre&gt;
-&lt;p&gt;Bei den gemäß &lt;em&gt;Standardfehler der Accuracywerte&lt;/em&gt; besten Modellen beträgt die durchschnittliche Accuracy zwischen 80% und 82%. Als endgültige Parameter wählen wir die Werte des Modells, dass unter den gemäß Accuracy 20 besten Modellen die geringste Streuung aufweist. Dieses Modell erzielte bei der Cross Validation eine deutlich überdurchschnittliche Accuracy und gleichzeitig eine unterdurchschnittliche Streuung. Der jeweilige Wert des gewählten Modells ist in den Boxplots durch einen roten Punkt gekennzeichnet.&lt;/p&gt;
+&lt;p&gt;Bei den gemäß &lt;em&gt;Standardfehler der Accuracywerte&lt;/em&gt; besten Modellen beträgt die durchschnittliche Accuracy zwischen 80% und 82%. Als endgültige Parameter wählen wir die Werte des Modells, dass unter den gemäß Accuracy 20 besten Modellen die geringste Streuung aufweist. Dieses Modell erzielte bei der Cross Validation eine deutlich überdurchschnittliche Accuracy und gleichzeitig eine unterdurchschnittliche Streuung. Der jeweilige Wert des gewählten Modells ist in den folgenden Boxplots durch einen roten Punkt gekennzeichnet.&lt;/p&gt;
 &lt;pre class=&#34;r&#34;&gt;&lt;code&gt;best_params_metrics &amp;lt;- best_accuracy %&amp;gt;% 
   slice_head(n = 1) %&amp;gt;% 
   select(Accuracy = mean, Streuung = std_err)
@@ -5432,7 +5432,7 @@ cv_rf %&amp;gt;%
 &lt;li&gt;trees = 2500&lt;/li&gt;
 &lt;li&gt;min_n = 23&lt;/li&gt;
 &lt;/ul&gt;
-&lt;p&gt;Abschließend testen wir das Modell an dem Testdatensatz &lt;em&gt;titanic_test&lt;/em&gt;, der nicht zur Model Selection verwendet wurde. Dieser Test dient dazu, eine realistische Einschätzung bezüglich der Performance unseres Modells an neuen Daten zu erhalten.&lt;/p&gt;
+&lt;p&gt;Abschließend testen wir das Modell an dem Testdatensatz &lt;em&gt;titanic_test&lt;/em&gt;, der nicht zur &lt;em&gt;Model Selection&lt;/em&gt; verwendet wurde. Dieser Test dient dazu, eine realistische Einschätzung bezüglich der Performance unseres Modells an neuen Daten zu erhalten.&lt;/p&gt;
 &lt;pre class=&#34;r&#34;&gt;&lt;code&gt;set.seed(1234)
 
 rf_fit_split &amp;lt;- rf_wflow %&amp;gt;%
@@ -5495,7 +5495,7 @@ binary
 &lt;/div&gt;
 &lt;div id=&#34;kaggle-submission&#34; class=&#34;section level2&#34;&gt;
 &lt;h2&gt;Kaggle Submission&lt;/h2&gt;
-&lt;p&gt;Abschließend erstellen wir die Prediction für die Submission auf Kaggle.&lt;/p&gt;
+&lt;p&gt;Abschließend erstellen wir die &lt;em&gt;Prediction&lt;/em&gt; für die Submission auf Kaggle.&lt;/p&gt;
 &lt;pre class=&#34;r&#34;&gt;&lt;code&gt;last_rf_fit &amp;lt;- rf_wflow %&amp;gt;%
   finalize_workflow(parameters = best_params) %&amp;gt;%
   fit(data = titanic)
@@ -5507,7 +5507,9 @@ final_pred &amp;lt;- last_rf_fit %&amp;gt;%
   extract_model() %&amp;gt;% 
   predict(bake(titanic_rec, titanic_holdout), type = &amp;quot;response&amp;quot;) 
   
-final_pred_binary &amp;lt;- ifelse(final_pred$predictions[,2] &amp;gt; 0.5, 1, 0) %&amp;gt;% factor(levels = c(0, 1))
+final_pred_binary &amp;lt;- 
+  ifelse(final_pred$predictions[,2] &amp;gt; 0.5, 1, 0) %&amp;gt;% 
+  factor(levels = c(0, 1))
 
 submission_df &amp;lt;- data.frame(PassengerId = titanic_holdout$PassengerId,
                             Survived = final_pred_binary)
