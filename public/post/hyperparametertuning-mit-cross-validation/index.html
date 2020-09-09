@@ -30,7 +30,7 @@
   
     
   
-  <meta name="description" content="Das Hauptaugenmerk dieser Analyse liegt auf dem Hyperparametertuning per Cross-Validation. Insbesondere wollte ich die Cross Validation durch Schleifen selbst inmplementieren statt z.B. caret bzw. tidymodels dafür zu verwenden. Für die Modellierung wurde Boosting verwendet.">
+  <meta name="description" content="Der Fokus dieser Analyse liegt auf dem Hyperparametertuning per Cross-Validation. Insbesondere habe ich die Cross Validation durch Schleifen selbst implementiert statt z.B. caret bzw. tidymodels dafür zu verwenden. Für die Modellierung wurde Boosting genutzt.">
 
   
   <link rel="alternate" hreflang="de" href="/post/hyperparametertuning-mit-cross-validation/">
@@ -249,7 +249,7 @@
   <meta property="og:site_name" content="Nicolas Mollier">
   <meta property="og:url" content="/post/hyperparametertuning-mit-cross-validation/">
   <meta property="og:title" content="Boosting: Implementierung von Hyperparameteruning per Cross Validation durch for-Schleifen | Nicolas Mollier">
-  <meta property="og:description" content="Das Hauptaugenmerk dieser Analyse liegt auf dem Hyperparametertuning per Cross-Validation. Insbesondere wollte ich die Cross Validation durch Schleifen selbst inmplementieren statt z.B. caret bzw. tidymodels dafür zu verwenden. Für die Modellierung wurde Boosting verwendet."><meta property="og:image" content="/images/icon_hubb2c620e44f44b05f57a49afd6fd01f1_2551_512x512_fill_lanczos_center_2.png">
+  <meta property="og:description" content="Der Fokus dieser Analyse liegt auf dem Hyperparametertuning per Cross-Validation. Insbesondere habe ich die Cross Validation durch Schleifen selbst implementiert statt z.B. caret bzw. tidymodels dafür zu verwenden. Für die Modellierung wurde Boosting genutzt."><meta property="og:image" content="/images/icon_hubb2c620e44f44b05f57a49afd6fd01f1_2551_512x512_fill_lanczos_center_2.png">
   <meta property="twitter:image" content="/images/icon_hubb2c620e44f44b05f57a49afd6fd01f1_2551_512x512_fill_lanczos_center_2.png"><meta property="og:locale" content="de">
   
     
@@ -299,7 +299,7 @@
       "url": "/images/icon_hubb2c620e44f44b05f57a49afd6fd01f1_2551_192x192_fill_lanczos_center_2.png"
     }
   },
-  "description": "Das Hauptaugenmerk dieser Analyse liegt auf dem Hyperparametertuning per Cross-Validation. Insbesondere wollte ich die Cross Validation durch Schleifen selbst inmplementieren statt z.B. caret bzw. tidymodels dafür zu verwenden. Für die Modellierung wurde Boosting verwendet."
+  "description": "Der Fokus dieser Analyse liegt auf dem Hyperparametertuning per Cross-Validation. Insbesondere habe ich die Cross Validation durch Schleifen selbst implementiert statt z.B. caret bzw. tidymodels dafür zu verwenden. Für die Modellierung wurde Boosting genutzt."
 }
 </script>
 
@@ -615,7 +615,7 @@
       
 
 
-<p>Das Hauptaugenmerk dieser Analyse liegt auf dem Hyperparametertuning per Cross-Validation. Insbesondere wollte ich die Cross Validation durch Schleifen selbst inmplementieren statt z.B. caret bzw. tidymodels dafür zu verwenden. Für die Modellierung wurde <em>Boosting</em> verwendet. Der verwendete Datensatz stammt aus der Titanic Machine Learning Competition auf Kaggle: <a href="https://www.kaggle.com/c/titanic/data" class="uri">https://www.kaggle.com/c/titanic/data</a>. Zwar wurde eine Auswahl aus den zur Verfügung stehenden Prädiktoren getroffen. Eine elaborierte analytische Auswahl der zu verwendenden Prädiktoren und deren Transformation wurden allerdings ausgeklammert. Für eine vollumfängliche Analyse inklusive aller Schritte des Predictive Modeling Workflows siehe <a href="https://trusting-golick-5f2d24.netlify.app/post/random-forest-hyperparametertuning-mit-tidymodels-im-rahmen-der-kaggle-machine-learning-competition-titanic/" class="uri">https://trusting-golick-5f2d24.netlify.app/post/random-forest-hyperparametertuning-mit-tidymodels-im-rahmen-der-kaggle-machine-learning-competition-titanic/</a></p>
+<p>Der Fokus dieser Analyse liegt auf dem Hyperparametertuning per Cross-Validation. Insbesondere habe ich die Cross Validation durch Schleifen selbst implementiert statt z.B. caret bzw. tidymodels dafür zu verwenden. Für die Modellierung wurde <em>Boosting</em> genutzt. Der verwendete Datensatz stammt aus der Titanic Machine Learning Competition auf Kaggle: <a href="https://www.kaggle.com/c/titanic/data" class="uri">https://www.kaggle.com/c/titanic/data</a>. Zwar wurde eine Auswahl aus den zur Verfügung stehenden Prädiktoren getroffen. Eine elaborierte analytische Auswahl der zu verwendenden Prädiktoren und deren Transformation wurden allerdings ausgeklammert. Für eine vollumfängliche Analyse inklusive aller Schritte des Predictive Modeling Workflows siehe <a href="https://trusting-golick-5f2d24.netlify.app/post/random-forest-hyperparametertuning-mit-tidymodels-im-rahmen-der-kaggle-machine-learning-competition-titanic/">Random Forest: Hyperparametertuning mit tidymodels im Rahmen der Titanic Machine Learning Competition</a></p>
 <div id="packages" class="section level2">
 <h2>Packages</h2>
 <pre class="r"><code>library(tidyverse)
