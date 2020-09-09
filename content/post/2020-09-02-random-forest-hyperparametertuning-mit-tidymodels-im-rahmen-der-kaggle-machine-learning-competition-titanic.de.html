@@ -5411,7 +5411,7 @@ Model335
 <pre class="r"><code>best_params &lt;- best_accuracy %&gt;% 
   slice_head(n = 1) %&gt;% 
   select(mtry, trees, min_n)</code></pre>
-<p>Bei den gemäß <em>Standardfehler der Accuracywerte</em> besten Modellen beträgt die durchschnittliche Accuracy zwischen 80% und 82%. Als endgültige Parameter wählen wir die Werte des Modells, dass unter den gemäß Accuracy 20 besten Modellen die geringste Streuung aufweist. Dieses Modell erzielte bei der Cross Validation eine deutlich überdurchschnittliche Accuracy und gleichzeitig eine unterdurchschnittliche Streuung. Der jeweilige Wert des gewählten Modells ist in den folgenden Boxplots durch einen roten Punkt gekennzeichnet.</p>
+<p>Bei den gemäß <em>Standardfehler der Accuracywerte</em> besten Modellen beträgt die durchschnittliche Accuracy zwischen 80% und 82%. Als endgültige Parameter wählen wir die Werte des Modells, das unter den gemäß Accuracy 20 besten Modellen die geringste Streuung aufweist. Dieses Modell erzielte bei der Cross Validation eine deutlich überdurchschnittliche Accuracy und gleichzeitig eine unterdurchschnittliche Streuung. Der jeweilige Wert des gewählten Modells ist in den folgenden Boxplots durch einen roten Punkt gekennzeichnet.</p>
 <pre class="r"><code>best_params_metrics &lt;- best_accuracy %&gt;% 
   slice_head(n = 1) %&gt;% 
   select(Accuracy = mean, Streuung = std_err)
