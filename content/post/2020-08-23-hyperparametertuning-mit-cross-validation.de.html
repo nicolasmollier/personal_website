@@ -1,10 +1,10 @@
 ---
-title: 'Kaggle: Titanic Machine Learning Competition'
+title: 'Boosting: Implementierung von Hyperparameteruning per Cross Validation durch for-Schleifen'
 author: Nicolas Mollier
 date: '2020-08-23'
 slug: hyperparametertuning-mit-cross-validation
 categories: []
-tags: []
+tags: [Boosting, for loops, Cross Validation]
 subtitle: ''
 summary: ''
 authors: []
@@ -19,7 +19,7 @@ projects: []
 
 
 
-<p>Eine Analyse für die Teilnahme an der Titanic Machine Learning Competition. In dieser Competition geht es darum, möglichst akkurat vorherzusagen, welche der Passagiere der Titanic überleben und welche nicht. Das Hauptaugenmerk dieser Analyse liegt auf dem Hyperparametertuning per Cross-Validation. Insbesondere wollte ich die Cross Validation durch Schleifen selbst inmplementieren statt z.B. caret bzw tidymodels dafür zu verwenden. Für die Modellierung wurde <em>Boosting</em> verwendet. Zwar wurde eine Auswahl aus den zur Verfügung stehenden Prädiktoren getroffen. Eine elaborierte analytische Auswahl der zu verwendenden Prädiktoren und deren Transformation wurden allerdings ausgeklammert. <!-- Für eine Analyse, bei der die Auswahl der richtigen Prädiktoren im Mittelpunkt steht, siehe. Für eine Analyse zum Umgang mit sehr vielen Variablen (Hauptkomponentenanalyse) siehe. --></p>
+<p>Das Hauptaugenmerk dieser Analyse liegt auf dem Hyperparametertuning per Cross-Validation. Insbesondere wollte ich die Cross Validation durch Schleifen selbst inmplementieren statt z.B. caret bzw. tidymodels dafür zu verwenden. Für die Modellierung wurde <em>Boosting</em> verwendet. Der verwendete Datensatz stammt aus der Titanic Machine Learning Competition auf Kaggle: <a href="https://www.kaggle.com/c/titanic/data" class="uri">https://www.kaggle.com/c/titanic/data</a>. Zwar wurde eine Auswahl aus den zur Verfügung stehenden Prädiktoren getroffen. Eine elaborierte analytische Auswahl der zu verwendenden Prädiktoren und deren Transformation wurden allerdings ausgeklammert. Für eine vollumfängliche Analyse inklusive aller Schritte des Predictive Modeling Workflows siehe <a href="https://trusting-golick-5f2d24.netlify.app/post/random-forest-hyperparametertuning-mit-tidymodels-im-rahmen-der-kaggle-machine-learning-competition-titanic/" class="uri">https://trusting-golick-5f2d24.netlify.app/post/random-forest-hyperparametertuning-mit-tidymodels-im-rahmen-der-kaggle-machine-learning-competition-titanic/</a></p>
 <div id="packages" class="section level2">
 <h2>Packages</h2>
 <pre class="r"><code>library(tidyverse)

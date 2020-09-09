@@ -30,7 +30,7 @@
   
     
   
-  <meta name="description" content="Eine Analyse für die Teilnahme an der Titanic Machine Learning Competition. In dieser Competition geht es darum, möglichst akkurat vorherzusagen, welche der Passagiere der Titanic überleben und welche nicht. Das Hauptaugenmerk dieser Analyse liegt auf dem Hyperparametertuning per Cross-Validation.">
+  <meta name="description" content="Das Hauptaugenmerk dieser Analyse liegt auf dem Hyperparametertuning per Cross-Validation. Insbesondere wollte ich die Cross Validation durch Schleifen selbst inmplementieren statt z.B. caret bzw. tidymodels dafür zu verwenden. Für die Modellierung wurde Boosting verwendet.">
 
   
   <link rel="alternate" hreflang="de" href="/post/hyperparametertuning-mit-cross-validation/">
@@ -248,8 +248,8 @@
   
   <meta property="og:site_name" content="Nicolas Mollier">
   <meta property="og:url" content="/post/hyperparametertuning-mit-cross-validation/">
-  <meta property="og:title" content="Kaggle: Titanic Machine Learning Competition | Nicolas Mollier">
-  <meta property="og:description" content="Eine Analyse für die Teilnahme an der Titanic Machine Learning Competition. In dieser Competition geht es darum, möglichst akkurat vorherzusagen, welche der Passagiere der Titanic überleben und welche nicht. Das Hauptaugenmerk dieser Analyse liegt auf dem Hyperparametertuning per Cross-Validation."><meta property="og:image" content="/images/icon_hubb2c620e44f44b05f57a49afd6fd01f1_2551_512x512_fill_lanczos_center_2.png">
+  <meta property="og:title" content="Boosting: Implementierung von Hyperparameteruning per Cross Validation durch for-Schleifen | Nicolas Mollier">
+  <meta property="og:description" content="Das Hauptaugenmerk dieser Analyse liegt auf dem Hyperparametertuning per Cross-Validation. Insbesondere wollte ich die Cross Validation durch Schleifen selbst inmplementieren statt z.B. caret bzw. tidymodels dafür zu verwenden. Für die Modellierung wurde Boosting verwendet."><meta property="og:image" content="/images/icon_hubb2c620e44f44b05f57a49afd6fd01f1_2551_512x512_fill_lanczos_center_2.png">
   <meta property="twitter:image" content="/images/icon_hubb2c620e44f44b05f57a49afd6fd01f1_2551_512x512_fill_lanczos_center_2.png"><meta property="og:locale" content="de">
   
     
@@ -281,7 +281,7 @@
     "@type": "WebPage",
     "@id": "/post/hyperparametertuning-mit-cross-validation/"
   },
-  "headline": "Kaggle: Titanic Machine Learning Competition",
+  "headline": "Boosting: Implementierung von Hyperparameteruning per Cross Validation durch for-Schleifen",
   
   "datePublished": "2020-08-23T00:00:00Z",
   "dateModified": "2020-08-23T19:43:03+02:00",
@@ -299,7 +299,7 @@
       "url": "/images/icon_hubb2c620e44f44b05f57a49afd6fd01f1_2551_192x192_fill_lanczos_center_2.png"
     }
   },
-  "description": "Eine Analyse für die Teilnahme an der Titanic Machine Learning Competition. In dieser Competition geht es darum, möglichst akkurat vorherzusagen, welche der Passagiere der Titanic überleben und welche nicht. Das Hauptaugenmerk dieser Analyse liegt auf dem Hyperparametertuning per Cross-Validation."
+  "description": "Das Hauptaugenmerk dieser Analyse liegt auf dem Hyperparametertuning per Cross-Validation. Insbesondere wollte ich die Cross Validation durch Schleifen selbst inmplementieren statt z.B. caret bzw. tidymodels dafür zu verwenden. Für die Modellierung wurde Boosting verwendet."
 }
 </script>
 
@@ -317,7 +317,7 @@
 
 
 
-  <title>Kaggle: Titanic Machine Learning Competition | Nicolas Mollier</title>
+  <title>Boosting: Implementierung von Hyperparameteruning per Cross Validation durch for-Schleifen | Nicolas Mollier</title>
 
 </head>
 
@@ -546,7 +546,7 @@
   
   
 <div class="article-container pt-3">
-  <h1>Kaggle: Titanic Machine Learning Competition</h1>
+  <h1>Boosting: Implementierung von Hyperparameteruning per Cross Validation durch for-Schleifen</h1>
 
   
 
@@ -615,7 +615,7 @@
       
 
 
-<p>Eine Analyse für die Teilnahme an der Titanic Machine Learning Competition. In dieser Competition geht es darum, möglichst akkurat vorherzusagen, welche der Passagiere der Titanic überleben und welche nicht. Das Hauptaugenmerk dieser Analyse liegt auf dem Hyperparametertuning per Cross-Validation. Insbesondere wollte ich die Cross Validation durch Schleifen selbst inmplementieren statt z.B. caret bzw tidymodels dafür zu verwenden. Für die Modellierung wurde <em>Boosting</em> verwendet. Zwar wurde eine Auswahl aus den zur Verfügung stehenden Prädiktoren getroffen. Eine elaborierte analytische Auswahl der zu verwendenden Prädiktoren und deren Transformation wurden allerdings ausgeklammert. <!-- Für eine Analyse, bei der die Auswahl der richtigen Prädiktoren im Mittelpunkt steht, siehe. Für eine Analyse zum Umgang mit sehr vielen Variablen (Hauptkomponentenanalyse) siehe. --></p>
+<p>Das Hauptaugenmerk dieser Analyse liegt auf dem Hyperparametertuning per Cross-Validation. Insbesondere wollte ich die Cross Validation durch Schleifen selbst inmplementieren statt z.B. caret bzw. tidymodels dafür zu verwenden. Für die Modellierung wurde <em>Boosting</em> verwendet. Der verwendete Datensatz stammt aus der Titanic Machine Learning Competition auf Kaggle: <a href="https://www.kaggle.com/c/titanic/data" class="uri">https://www.kaggle.com/c/titanic/data</a>. Zwar wurde eine Auswahl aus den zur Verfügung stehenden Prädiktoren getroffen. Eine elaborierte analytische Auswahl der zu verwendenden Prädiktoren und deren Transformation wurden allerdings ausgeklammert. Für eine vollumfängliche Analyse inklusive aller Schritte des Predictive Modeling Workflows siehe <a href="https://trusting-golick-5f2d24.netlify.app/post/random-forest-hyperparametertuning-mit-tidymodels-im-rahmen-der-kaggle-machine-learning-competition-titanic/" class="uri">https://trusting-golick-5f2d24.netlify.app/post/random-forest-hyperparametertuning-mit-tidymodels-im-rahmen-der-kaggle-machine-learning-competition-titanic/</a></p>
 <div id="packages" class="section level2">
 <h2>Packages</h2>
 <pre class="r"><code>library(tidyverse)
@@ -824,6 +824,16 @@ write_csv(submission_df,
 
 
 
+<div class="article-tags">
+  
+  <a class="badge badge-light" href="/tag/boosting/">Boosting</a>
+  
+  <a class="badge badge-light" href="/tag/for-loops/">for loops</a>
+  
+  <a class="badge badge-light" href="/tag/cross-validation/">Cross Validation</a>
+  
+</div>
+
 
 
 <div class="share-box" aria-hidden="true">
@@ -837,7 +847,7 @@ write_csv(submission_df,
       
       
       <li>
-        <a href="https://twitter.com/intent/tweet?url=/post/hyperparametertuning-mit-cross-validation/&amp;text=Kaggle:%20Titanic%20Machine%20Learning%20Competition" target="_blank" rel="noopener" class="share-btn-twitter">
+        <a href="https://twitter.com/intent/tweet?url=/post/hyperparametertuning-mit-cross-validation/&amp;text=Boosting:%20Implementierung%20von%20Hyperparameteruning%20per%20Cross%20Validation%20durch%20for-Schleifen" target="_blank" rel="noopener" class="share-btn-twitter">
           <i class="fab fa-twitter"></i>
         </a>
       </li>
@@ -850,7 +860,7 @@ write_csv(submission_df,
       
       
       <li>
-        <a href="https://www.facebook.com/sharer.php?u=/post/hyperparametertuning-mit-cross-validation/&amp;t=Kaggle:%20Titanic%20Machine%20Learning%20Competition" target="_blank" rel="noopener" class="share-btn-facebook">
+        <a href="https://www.facebook.com/sharer.php?u=/post/hyperparametertuning-mit-cross-validation/&amp;t=Boosting:%20Implementierung%20von%20Hyperparameteruning%20per%20Cross%20Validation%20durch%20for-Schleifen" target="_blank" rel="noopener" class="share-btn-facebook">
           <i class="fab fa-facebook"></i>
         </a>
       </li>
@@ -863,7 +873,7 @@ write_csv(submission_df,
       
       
       <li>
-        <a href="mailto:?subject=Kaggle:%20Titanic%20Machine%20Learning%20Competition&amp;body=/post/hyperparametertuning-mit-cross-validation/" target="_blank" rel="noopener" class="share-btn-email">
+        <a href="mailto:?subject=Boosting:%20Implementierung%20von%20Hyperparameteruning%20per%20Cross%20Validation%20durch%20for-Schleifen&amp;body=/post/hyperparametertuning-mit-cross-validation/" target="_blank" rel="noopener" class="share-btn-email">
           <i class="fas fa-envelope"></i>
         </a>
       </li>
@@ -876,7 +886,7 @@ write_csv(submission_df,
       
       
       <li>
-        <a href="https://www.linkedin.com/shareArticle?url=/post/hyperparametertuning-mit-cross-validation/&amp;title=Kaggle:%20Titanic%20Machine%20Learning%20Competition" target="_blank" rel="noopener" class="share-btn-linkedin">
+        <a href="https://www.linkedin.com/shareArticle?url=/post/hyperparametertuning-mit-cross-validation/&amp;title=Boosting:%20Implementierung%20von%20Hyperparameteruning%20per%20Cross%20Validation%20durch%20for-Schleifen" target="_blank" rel="noopener" class="share-btn-linkedin">
           <i class="fab fa-linkedin-in"></i>
         </a>
       </li>
@@ -889,7 +899,7 @@ write_csv(submission_df,
       
       
       <li>
-        <a href="whatsapp://send?text=Kaggle:%20Titanic%20Machine%20Learning%20Competition%20/post/hyperparametertuning-mit-cross-validation/" target="_blank" rel="noopener" class="share-btn-whatsapp">
+        <a href="whatsapp://send?text=Boosting:%20Implementierung%20von%20Hyperparameteruning%20per%20Cross%20Validation%20durch%20for-Schleifen%20/post/hyperparametertuning-mit-cross-validation/" target="_blank" rel="noopener" class="share-btn-whatsapp">
           <i class="fab fa-whatsapp"></i>
         </a>
       </li>
@@ -902,7 +912,7 @@ write_csv(submission_df,
       
       
       <li>
-        <a href="https://service.weibo.com/share/share.php?url=/post/hyperparametertuning-mit-cross-validation/&amp;title=Kaggle:%20Titanic%20Machine%20Learning%20Competition" target="_blank" rel="noopener" class="share-btn-weibo">
+        <a href="https://service.weibo.com/share/share.php?url=/post/hyperparametertuning-mit-cross-validation/&amp;title=Boosting:%20Implementierung%20von%20Hyperparameteruning%20per%20Cross%20Validation%20durch%20for-Schleifen" target="_blank" rel="noopener" class="share-btn-weibo">
           <i class="fab fa-weibo"></i>
         </a>
       </li>
