@@ -41,8 +41,8 @@ library(syuzhet)</code></pre>
 </div>
 <div id="scrape-the-data-from-twitter" class="section level2">
 <h2>Scrape the Data from Twitter</h2>
-<pre class="r"><code>n_tweets &lt;- 3000</code></pre>
-<p>Als erstes laden wir die letzten 3000 Tweets der beiden Präsidentschaftskandidaten. Dazu nutzen wir die Pakete <em>rtweet</em> und <em>httpuv</em>, um über das Twitter API Zugriff auf die Tweets und die Profilinformationen zu erhalten.</p>
+<pre class="r"><code>n_tweets &lt;- 3200</code></pre>
+<p>Als erstes laden wir die letzten 3200 Tweets der beiden Präsidentschaftskandidaten. Dazu nutzen wir die Pakete <em>rtweet</em> und <em>httpuv</em>, um über das Twitter API Zugriff auf die Tweets und die Profilinformationen zu erhalten.</p>
 <pre class="r"><code>influence_canidates_df &lt;- lookup_users(c(&quot;realDonaldTrump&quot;, &quot;JoeBiden&quot;))
 
 trump_timeline_list &lt;- list()
@@ -60,7 +60,7 @@ trump_timeline &lt;- bind_rows(trump_timeline_list) %&gt;%
 
 n_tweets &lt;- nrow(trump_timeline)
 biden_timeline &lt;- get_timeline(user = &quot;JoeBiden&quot;, n = n_tweets)</code></pre>
-<p>Die Funktion <em>get_timeline()</em> funktioniert bei Joe Biden sehr gut. Bei Donald Trump liefert sie jedoch stets weniger als die angefragte Anzahl an Tweets. Zudem schwankt die Anzahl der Tweets sehr. Das ist der Grund. Das ist der Grund, warum im Fall von Donald Trump die Konstruktion mit einer for-Schleife gewählt wurde. Sie versucht, nach und nach die noch nicht erhaltenen Tweets zu laden und anschließend alle erhaltenen Tweets in einem Datensatz <em>trump_timeline</em> zu vereinigen. So wird die Anzahl der erhaltenen Tweets erhöht. Die geforderte Anzahl von 3201 wird aber dennoch nicht erreicht. Für dieses Problem habe ich noch keine Lösung gefunden.</p>
+<p>Die Funktion <em>get_timeline()</em> funktioniert bei Joe Biden sehr gut. Bei Donald Trump liefert sie jedoch stets weniger als die angefragte Anzahl an Tweets. Zudem schwankt die Anzahl der Tweets sehr. Das ist der Grund, warum im Fall von Donald Trump die Konstruktion mit einer for-Schleife gewählt wurde. Sie versucht, nach und nach die noch nicht erhaltenen Tweets zu laden und anschließend alle erhaltenen Tweets in einem Datensatz <em>trump_timeline</em> zu vereinigen. So wird die Anzahl der erhaltenen Tweets erhöht.</p>
 </div>
 <div id="influence-of-candidates" class="section level2">
 <h2>Influence of Candidates</h2>
@@ -80,7 +80,7 @@ n_followers_biden &lt;- n_followers %&gt;%
 
 more_foll &lt;- (n_followers_trump / n_followers_biden) %&gt;% 
   round(digits = 0)</code></pre>
-<p>Donald Trump hat mit 85880452 rund 9-mal so viele Follower wie Joe Biden.</p>
+<p>Donald Trump hat mit 85900068 rund 9-mal so viele Follower wie Joe Biden.</p>
 </div>
 <div id="twitter-frequenz" class="section level2">
 <h2>Twitter Frequenz</h2>
@@ -133,11 +133,11 @@ prop_retweet %&gt;%
 <tbody>
 <tr class="odd">
 <td align="left">JoeBiden</td>
-<td align="right">0.0349672</td>
+<td align="right">0.030625</td>
 </tr>
 <tr class="even">
 <td align="left">realDonaldTrump</td>
-<td align="right">0.5060918</td>
+<td align="right">0.505597</td>
 </tr>
 </tbody>
 </table>
@@ -194,7 +194,7 @@ mean_retweet_count_biden &lt;- biden_timeline %&gt;%
   summarise(mean_retweet_count = mean(retweet_count)) %&gt;% 
   as_vector() 
 prop_diff_retweets &lt;- (1 - mean_retweet_count_biden / mean_retweet_count_trump) </code></pre>
-<p>Donald Trumps Tweets erzielen im Durchschnitt 2.398810^{4}, die von Joe Biden 7461 und damit um etwa 69% weniger.</p>
+<p>Donald Trumps Tweets erzielen im Durchschnitt 2.399610^{4}, die von Joe Biden 1.260110^{4} und damit um etwa 47% weniger.</p>
 <p>Betrachten wir die durchschnittliche Anzahl an Retweets, die die Tweets der Kandidaten pro Tag auslösen. Nachdem wir für beide Kandidaten die durchschnittlichen täglichen Retweets berstimmt haben, verbinden wir beide Datensätze per Inner Join und bringen den vereinigten Datensatz in ein <em>tidy format</em>, um die Zeitreihe anschließend zu grafisch darzustellen.</p>
 <pre class="r"><code>trump_mean_retweet_per_day &lt;- trump_timeline %&gt;% 
   select(screen_name, date, retweet_count) %&gt;% 
@@ -237,14 +237,14 @@ Allerdings geht aus der Grafik hervor, dass Joe Biden an einem bestimmten Tag un
 ##    &lt;date&gt;     &lt;fct&gt;             &lt;dbl&gt;
 ##  1 2020-08-11 biden            46829.
 ##  2 2020-06-08 biden            26314.
-##  3 2020-08-24 biden            24570.
-##  4 2020-09-04 biden            21966.
-##  5 2020-08-31 biden            21934.
+##  3 2020-08-24 biden            24572.
+##  4 2020-09-04 biden            21974.
+##  5 2020-08-31 biden            21936.
 ##  6 2020-07-04 biden            21482.
-##  7 2020-09-11 biden            21149 
-##  8 2020-07-17 biden            20377.
-##  9 2020-08-29 biden            20123.
-## 10 2020-06-28 biden            19948.
+##  7 2020-07-17 biden            20378.
+##  8 2020-08-29 biden            20125.
+##  9 2020-06-28 biden            19948.
+## 10 2020-06-21 biden            19825 
 ## # … with 88 more rows</code></pre>
 <pre class="r"><code>biden_timeline %&gt;% 
   filter(date == &quot;2020-08-11&quot;) %&gt;% 
@@ -252,12 +252,12 @@ Allerdings geht aus der Grafik hervor, dass Joe Biden an einem bestimmten Tag un
 <pre><code>## # A tibble: 6 x 3
 ##   date       text                                                  retweet_count
 ##   &lt;date&gt;     &lt;chr&gt;                                                         &lt;int&gt;
-## 1 2020-08-11 &quot;Back when Kamala was Attorney General, she worked c…         34201
-## 2 2020-08-11 &quot;I have the great honor to announce that I’ve picked…        169976
-## 3 2020-08-11 &quot;Don&#39;t forget that in the middle of this pandemic, t…         10235
+## 1 2020-08-11 &quot;Back when Kamala was Attorney General, she worked c…         34204
+## 2 2020-08-11 &quot;I have the great honor to announce that I’ve picked…        169980
+## 3 2020-08-11 &quot;Don&#39;t forget that in the middle of this pandemic, t…         10236
 ## 4 2020-08-11 &quot;I promise you if I&#39;m elected, I won&#39;t waste any tim…         41676
-## 5 2020-08-11 &quot;This is the latest dire consequence of Donald Trump…          7380
-## 6 2020-08-11 &quot;Social Security is the bedrock of American retireme…         17504</code></pre>
+## 5 2020-08-11 &quot;This is the latest dire consequence of Donald Trump…          7379
+## 6 2020-08-11 &quot;Social Security is the bedrock of American retireme…         17500</code></pre>
 <p>Es stellt sich heraus, dass es sich bei diesem Tag um den 11.08.2020 handelt, den Tag, an dem Biden Kamala Harris als seine Kandidatin für das Amt des Vizepräsidenten bekanntgab.</p>
 <pre class="r"><code>trump_higher_retweet &lt;- mean_retweet_comparison %&gt;% 
   pivot_wider(names_from = candidate,
@@ -267,7 +267,7 @@ Allerdings geht aus der Grafik hervor, dass Joe Biden an einem bestimmten Tag un
   select_if(is.logical) %&gt;% 
   colMeans() %&gt;% 
   scales::percent()</code></pre>
-<p>Insegesamt über den betrachteten Zeitraum erzielten die Tweets von Trump aber an 90% der Tage mehr Retweets als die seines Herausforderers.</p>
+<p>Insegesamt über den betrachteten Zeitraum erzielten die Tweets von Trump aber an 91% der Tage mehr Retweets als die seines Herausforderers.</p>
 </div>
 <div id="populärste-tweets" class="section level2">
 <h2>Populärste Tweets</h2>
@@ -279,16 +279,16 @@ Allerdings geht aus der Grafik hervor, dass Joe Biden an einem bestimmten Tag un
 <pre><code>## # A tibble: 10 x 2
 ##    text                                                            retweet_count
 ##    &lt;chr&gt;                                                                   &lt;int&gt;
-##  1 &quot;I can’t believe I have to say this, but please don’t drink bl…        329835
-##  2 &quot;I have the great honor to announce that I’ve picked @KamalaHa…        169976
-##  3 &quot;When Donald Trump says tonight you won’t be safe in Joe Biden…        110382
-##  4 &quot;Mr. President, if you don’t respect our troops, you can’t lea…         92171
-##  5 &quot;Nearly 100,000 lives have been lost, and tens of millions are…         85802
-##  6 &quot;Donald Trump is the worst possible person to lead us through …         79115
-##  7 &quot;We can’t take four more years of this.&quot;                                78720
-##  8 &quot;You won&#39;t have to worry about my tweets when I&#39;m president.&quot;           77709
-##  9 &quot;Wear a mask.&quot;                                                          72815
-## 10 &quot;Remember: every example of violence Donald Trump decries has …         70080</code></pre>
+##  1 &quot;I can’t believe I have to say this, but please don’t drink bl…        329831
+##  2 &quot;I have the great honor to announce that I’ve picked @KamalaHa…        169980
+##  3 &quot;When Donald Trump says tonight you won’t be safe in Joe Biden…        110387
+##  4 &quot;Mr. President, if you don’t respect our troops, you can’t lea…         92224
+##  5 &quot;Nearly 100,000 lives have been lost, and tens of millions are…         85814
+##  6 &quot;Donald Trump is the worst possible person to lead us through …         79117
+##  7 &quot;We can’t take four more years of this.&quot;                                78721
+##  8 &quot;You won&#39;t have to worry about my tweets when I&#39;m president.&quot;           77705
+##  9 &quot;Wear a mask.&quot;                                                          72823
+## 10 &quot;Donald Trump said he didn&#39;t want to tell the truth and create…         72459</code></pre>
 <pre class="r"><code>trump_timeline %&gt;% 
   filter(!is_retweet) %&gt;% 
   select(text, retweet_count) %&gt;% 
@@ -297,16 +297,16 @@ Allerdings geht aus der Grafik hervor, dass Joe Biden an einem bestimmten Tag un
 <pre><code>## # A tibble: 10 x 2
 ##    text                                                            retweet_count
 ##    &lt;chr&gt;                                                                   &lt;int&gt;
-##  1 IF YOU CAN PROTEST IN PERSON, YOU CAN VOTE IN PERSON!                  138036
-##  2 https://t.co/vnRpk0zl5y                                                129920
-##  3 DRAIN THE SWAMP! https://t.co/68M4sN7LLD                               119167
+##  1 IF YOU CAN PROTEST IN PERSON, YOU CAN VOTE IN PERSON!                  138030
+##  2 https://t.co/vnRpk0zl5y                                                129919
+##  3 DRAIN THE SWAMP! https://t.co/68M4sN7LLD                               119166
 ##  4 China has caused great damage to the United States and the res…        109713
-##  5 https://t.co/36b2xC1GZf                                                 94648
-##  6 MAKE AMERICA GREAT AGAIN!                                               89210
-##  7 https://t.co/MGBKlaDrhm                                                 89016
-##  8 THOSE THAT DENY THEIR HISTORY ARE DOOMED TO REPEAT IT!                  86945
-##  9 FAKE NEWS IS THE ENEMY OF THE PEOPLE!                                   85419
-## 10 THE SILENT MAJORITY IS STRONGER THAN EVER!!!                            84047</code></pre>
+##  5 https://t.co/36b2xC1GZf                                                 94627
+##  6 MAKE AMERICA GREAT AGAIN!                                               89211
+##  7 https://t.co/MGBKlaDrhm                                                 89010
+##  8 THOSE THAT DENY THEIR HISTORY ARE DOOMED TO REPEAT IT!                  86941
+##  9 FAKE NEWS IS THE ENEMY OF THE PEOPLE!                                   85423
+## 10 THE SILENT MAJORITY IS STRONGER THAN EVER!!!                            84051</code></pre>
 </div>
 <div id="analyse-der-tweets-text-analysis" class="section level2">
 <h2>Analyse der Tweets: Text Analysis</h2>
@@ -383,9 +383,9 @@ biden_corpus &lt;- biden_corpus %&gt;%
   tm_map(removeWords, stopwords(&quot;en&quot;))</code></pre>
 <p>Nach Entfernung der Sonderzeichen, der Umformung in Kleinbuchstaben und der Entfernung der Stopwords, sehen die einzelnen Tweets etwa so aus, wie diese zwei Beispiele:</p>
 <pre class="r"><code>trump_corpus[[3]]$content</code></pre>
-<pre><code>## [1] &quot; joe biden  elected  far left lunatics won t just  running failed dem cities  will  running  department  justice   department  homeland security    u s  supreme court   city  town  suburb will  safe   november  rd   vote will save america &quot;</code></pre>
+<pre><code>## [1] &quot;&quot;</code></pre>
 <pre class="r"><code>biden_corpus[[3]]$content</code></pre>
-<pre><code>## [1] &quot;donald trump  holding  rally  michigan today  also refusing  fully fund  national guard    frontline workers  covid     responsible  testing  distributing food  medical supplies  michiganders need  pandemic response   pep rally &quot;</code></pre>
+<pre><code>## [1] &quot; year   mark  anniversary         midst  another crisis  compels us  summon  best   american people   face  unconscionable  inconceivable loss    crisis   already taken nearly         americans &quot;</code></pre>
 </div>
 <div id="häufig-verwendete-begriffe" class="section level3">
 <h3>Häufig verwendete Begriffe</h3>
@@ -395,8 +395,8 @@ term_count_biden &lt;- freq_terms(biden_corpus, 50)
 
 head(term_count_trump, 20)</code></pre>
 <pre><code>##    WORD        FREQ
-## 1  will         361
-## 2  great        290
+## 1  will         362
+## 2  great        291
 ## 3  amp          237
 ## 4  s            207
 ## 5  t            152
@@ -412,31 +412,31 @@ head(term_count_trump, 20)</code></pre>
 ## 15 complete      89
 ## 16 total         89
 ## 17 new           87
-## 18 never         85
+## 18 never         86
 ## 19 endorsement   84
 ## 20 democrats     80</code></pre>
 <pre class="r"><code>head(term_count_biden, 20)</code></pre>
 <pre><code>##    WORD      FREQ
-## 1  s         1520
-## 2  trump      997
-## 3  president  854
-## 4  donald     640
-## 5  will       617
-## 6  t          597
-## 7  can        534
-## 8  need       447
-## 9  one        382
-## 10 nation     381
-## 11 re         367
-## 12 american   355
-## 13 us         345
-## 14 m          340
-## 15 country    327
-## 16 ll         326
-## 17 get        318
-## 18 every      315
-## 19 people     300
-## 20 make       282</code></pre>
+## 1  s          740
+## 2  trump      484
+## 3  president  441
+## 4  t          358
+## 5  donald     323
+## 6  can        299
+## 7  will       297
+## 8  need       250
+## 9  re         229
+## 10 nation     205
+## 11 one        205
+## 12 american   197
+## 13 people     191
+## 14 us         191
+## 15 crisis     180
+## 16 ll         178
+## 17 together   164
+## 18 get        160
+## 19 now        153
+## 20 country    147</code></pre>
 <p>Es ist erkennbar, dass die Tweets immer noch Worte (und Buchstaben) enthalten, die für die inhaltliche Auswertung der Tweets störend sind. Aus diesem Grund werden weitere Stopwords entfernt. Die Auswahl, welche weiteren Worte zu entfernen sind, ist natürlich subjektiv. Dieser Subjektivität sollte man sich bewusst sein, um einem möglichen Bias bei der Auswahl entgegenwirken zu können.</p>
 <pre class="r"><code>custom_stop &lt;- c(&quot;will&quot;, &quot;amp&quot;, &quot;s&quot;, &quot;t&quot;, &quot;just&quot;, &quot;now&quot;, &quot;new&quot;, &quot;never&quot;, 
                  &quot;complete&quot;, &quot;total&quot;, &quot;m&quot;, &quot;like&quot;, &quot;even&quot;, &quot;re&quot;, &quot;ll&quot;, 
@@ -489,7 +489,7 @@ term_count_clean_biden %&gt;%
 <p><img src="/post/2020-09-10-twitter-analyse-textanalyse-der-tweets-der-kandidaten-um-das-amt-des-pr%C3%A4sidenten-der-usa.de_files/figure-html/unnamed-chunk-23-2.png" width="672" /></p>
 <p>Trump verwendet am häufigsten das Wort “great”. Bei Biden sind es die beiden Worte “president” und “trump”, die am häufigsten verwendet werden. Es scheint so, als würde sich Joe Biden in seinen Tweets vor allem an Donald Trump abarbeiten, während umgekehrt Donald Trump seinen Herausforderer deutlich seltener in seinen Tweets erwähnt.</p>
 <pre class="r"><code>rank_crisis &lt;- which(term_count_biden$WORD == &quot;crisis&quot;)</code></pre>
-<p>Donald Trump verwendet deutlich häufiger positive Adjektive wie “great” und “good”. Das kann darin begründet liegen, dass Trump als Amtsinhaber bestrebt ist, seine bisherige Politik als Erfolg zu verkaufen, während Joe Biden bestrebt sein wird, eine gegenteilige Darstellung zu verbreiten. So ist das Wort “crisis” bei Joe Biden auf Rang 32 der meistverwendeten Worte, bei Donald Trump kommt es nicht einmal unter den 1000 meistverwendeten Worten.</p>
+<p>Donald Trump verwendet deutlich häufiger positive Adjektive wie “great” und “good”. Das kann darin begründet liegen, dass Trump als Amtsinhaber bestrebt ist, seine bisherige Politik als Erfolg zu verkaufen, während Joe Biden bestrebt sein wird, eine gegenteilige Darstellung zu verbreiten. So ist das Wort “crisis” bei Joe Biden auf Rang 15 der meistverwendeten Worte, bei Donald Trump kommt es nicht einmal unter den 1000 meistverwendeten Worten.</p>
 <pre class="r"><code>freq_terms(trump_corpus, 1000) %&gt;% 
   filter(WORD == &quot;crisis&quot;)</code></pre>
 <pre><code>## [1] WORD FREQ
@@ -504,24 +504,24 @@ term_count_clean_biden %&gt;%
 <p>Zunächst müssen die Daten aber in ein für die <em>Topic Analysis</em> passendes Format gebracht werden.</p>
 <pre class="r"><code>dtm_trump &lt;- DocumentTermMatrix(trump_corpus)
 inspect(dtm_trump)</code></pre>
-<pre><code>## &lt;&lt;DocumentTermMatrix (documents: 1581, terms: 4117)&gt;&gt;
-## Non-/sparse entries: 16380/6492597
+<pre><code>## &lt;&lt;DocumentTermMatrix (documents: 1590, terms: 4129)&gt;&gt;
+## Non-/sparse entries: 16433/6548677
 ## Sparsity           : 100%
 ## Maximal term length: 21
 ## Weighting          : term frequency (tf)
 ## Sample             :
 ##       Terms
 ## Docs   biden big democrats endorsement fake great joe news people thank
-##   1237     0   1         0           0    0     0   0    0      0     0
-##   32       0   0         0           0    0     0   0    0      1     0
-##   5        1   0         0           0    0     0   1    0      0     0
-##   506      2   0         0           0    0     0   0    0      1     0
-##   528      0   0         0           0    0     1   0    0      0     0
-##   541      1   0         0           0    0     0   2    0      0     0
-##   650      0   0         0           0    0     0   0    0      0     0
-##   776      0   1         0           0    0     0   0    0      0     0
-##   919      0   1         1           0    0     1   0    0      1     0
-##   938      0   0         0           0    0     0   0    0      0     0</code></pre>
+##   1246     0   1         0           0    0     0   0    0      0     0
+##   14       1   0         0           0    0     0   1    0      0     0
+##   41       0   0         0           0    0     0   0    0      1     0
+##   515      2   0         0           0    0     0   0    0      1     0
+##   537      0   0         0           0    0     1   0    0      0     0
+##   550      1   0         0           0    0     0   2    0      0     0
+##   659      0   0         0           0    0     0   0    0      0     0
+##   785      0   1         0           0    0     0   0    0      0     0
+##   928      0   1         1           0    0     1   0    0      1     0
+##   947      0   0         0           0    0     0   0    0      0     0</code></pre>
 <pre class="r"><code>row_totals_trump &lt;- dtm_trump %&gt;% 
   apply(1, sum)
 
@@ -530,36 +530,36 @@ dtm_trump &lt;- dtm_trump[row_totals_trump &gt; 0, ]
 
 dtm_biden &lt;- DocumentTermMatrix(biden_corpus)
 inspect(dtm_biden)</code></pre>
-<pre><code>## &lt;&lt;DocumentTermMatrix (documents: 3091, terms: 6181)&gt;&gt;
-## Non-/sparse entries: 44039/19061432
+<pre><code>## &lt;&lt;DocumentTermMatrix (documents: 1551, terms: 4197)&gt;&gt;
+## Non-/sparse entries: 21577/6487970
 ## Sparsity           : 100%
-## Maximal term length: 28
+## Maximal term length: 25
 ## Weighting          : term frequency (tf)
 ## Sample             :
 ##       Terms
-## Docs   america american country donald health nation people president together
-##   1006       0        0       0      0      0      0      0         0        0
-##   1117       0        0       0      0      0      0      0         0        0
-##   1545       0        0       0      0      0      0      0         0        0
-##   2168       0        0       0      0      0      0      0         0        0
-##   2370       0        0       0      0      0      0      0         0        0
-##   2721       0        0       0      0      0      0      0         0        0
-##   2927       0        0       0      0      0      0      0         0        0
-##   3026       0        0       0      0      0      0      0         0        0
-##   3052       0        0       0      0      0      0      0         0        0
-##   3065       0        0       0      0      0      0      0         0        0
+## Docs   american country covid crisis donald nation people president together
+##   1011        0       0     0      0      0      0      0         0        0
+##   1055        0       0     0      0      0      0      0         0        0
+##   110         1       0     1      0      1      0      0         1        0
+##   1122        0       0     1      0      0      0      0         0        0
+##   1318        0       0     0      0      0      0      0         0        0
+##   1402        0       0     0      0      0      0      0         0        0
+##   1550        0       0     0      1      0      0      0         0        0
+##   402         0       0     0      0      0      0      0         0        0
+##   431         0       0     0      0      0      0      0         1        0
+##   792         0       0     0      0      0      0      0         0        0
 ##       Terms
 ## Docs   trump
-##   1006     1
-##   1117     0
-##   1545     0
-##   2168     0
-##   2370     0
-##   2721     0
-##   2927     0
-##   3026     0
-##   3052     0
-##   3065     0</code></pre>
+##   1011     1
+##   1055     0
+##   110      1
+##   1122     0
+##   1318     0
+##   1402     0
+##   1550     0
+##   402      0
+##   431      0
+##   792      1</code></pre>
 <pre class="r"><code>row_totals_biden &lt;- dtm_biden %&gt;% 
   apply(1, sum)
 
@@ -572,19 +572,19 @@ dtm_biden &lt;- dtm_biden[row_totals_biden &gt; 0, ]</code></pre>
 lda_5_biden &lt;- LDA(dtm_biden, k = 6)
 
 terms(lda_5_trump, 5)</code></pre>
-<pre><code>##      Topic 1 Topic 2      Topic 3    Topic 4       Topic 5    Topic 6  
-## [1,] &quot;news&quot;  &quot;democrat&quot;   &quot;great&quot;    &quot;endorsement&quot; &quot;biden&quot;    &quot;great&quot;  
-## [2,] &quot;fake&quot;  &quot;biden&quot;      &quot;national&quot; &quot;thank&quot;       &quot;joe&quot;      &quot;people&quot; 
-## [3,] &quot;big&quot;   &quot;portland&quot;   &quot;book&quot;     &quot;great&quot;       &quot;election&quot; &quot;police&quot; 
-## [4,] &quot;china&quot; &quot;law&quot;        &quot;jobs&quot;     &quot;military&quot;    &quot;left&quot;     &quot;court&quot;  
-## [5,] &quot;media&quot; &quot;anarchists&quot; &quot;record&quot;   &quot;amendment&quot;   &quot;mail&quot;     &quot;support&quot;</code></pre>
+<pre><code>##      Topic 1 Topic 2    Topic 3     Topic 4     Topic 5       Topic 6 
+## [1,] &quot;fake&quot;  &quot;great&quot;    &quot;great&quot;     &quot;great&quot;     &quot;people&quot;      &quot;great&quot; 
+## [2,] &quot;great&quot; &quot;big&quot;      &quot;biden&quot;     &quot;thank&quot;     &quot;great&quot;       &quot;people&quot;
+## [3,] &quot;news&quot;  &quot;news&quot;     &quot;people&quot;    &quot;biden&quot;     &quot;radical&quot;     &quot;joe&quot;   
+## [4,] &quot;big&quot;   &quot;military&quot; &quot;democrats&quot; &quot;big&quot;       &quot;endorsement&quot; &quot;bad&quot;   
+## [5,] &quot;biden&quot; &quot;biden&quot;    &quot;big&quot;       &quot;amendment&quot; &quot;country&quot;     &quot;news&quot;</code></pre>
 <pre class="r"><code>terms(lda_5_biden, 5)</code></pre>
-<pre><code>##      Topic 1     Topic 2     Topic 3   Topic 4     Topic 5     Topic 6    
-## [1,] &quot;trump&quot;     &quot;president&quot; &quot;nation&quot;  &quot;donald&quot;    &quot;trump&quot;     &quot;trump&quot;    
-## [2,] &quot;president&quot; &quot;america&quot;   &quot;donald&quot;  &quot;trump&quot;     &quot;president&quot; &quot;together&quot; 
-## [3,] &quot;care&quot;      &quot;people&quot;    &quot;america&quot; &quot;president&quot; &quot;donald&quot;    &quot;american&quot; 
-## [4,] &quot;nation&quot;    &quot;country&quot;   &quot;work&quot;    &quot;country&quot;   &quot;american&quot;  &quot;donald&quot;   
-## [5,] &quot;donald&quot;    &quot;trump&quot;     &quot;country&quot; &quot;american&quot;  &quot;care&quot;      &quot;president&quot;</code></pre>
+<pre><code>##      Topic 1     Topic 2     Topic 3  Topic 4     Topic 5     Topic 6    
+## [1,] &quot;president&quot; &quot;nation&quot;    &quot;donald&quot; &quot;trump&quot;     &quot;president&quot; &quot;trump&quot;    
+## [2,] &quot;trump&quot;     &quot;president&quot; &quot;nation&quot; &quot;together&quot;  &quot;american&quot;  &quot;crisis&quot;   
+## [3,] &quot;donald&quot;    &quot;america&quot;   &quot;people&quot; &quot;president&quot; &quot;country&quot;   &quot;people&quot;   
+## [4,] &quot;america&quot;   &quot;trump&quot;     &quot;crisis&quot; &quot;people&quot;    &quot;covid&quot;     &quot;promise&quot;  
+## [5,] &quot;failed&quot;    &quot;health&quot;    &quot;lead&quot;   &quot;covid&quot;     &quot;trump&quot;     &quot;americans&quot;</code></pre>
 </div>
 </div>
 <div id="sentiment-analysis" class="section level2">
@@ -600,21 +600,21 @@ biden_sentiment_text &lt;- biden_sentiment[[&quot;content&quot;]]$content</code>
 <pre class="r"><code>trump_sa &lt;- get_nrc_sentiment(trump_sentiment_text)
 head(trump_sa)</code></pre>
 <pre><code>##   anger anticipation disgust fear joy sadness surprise trust negative positive
-## 1     1            1       0    1   2       1        1     2        1        2
-## 2     2            0       1    2   0       2        0     0        2        1
-## 3     2            2       0    1   3       1        1     4        1        5
-## 4     1            0       1    2   0       1        0     0        2        1
-## 5     2            1       1    1   0       3        0     1        4        2
-## 6     1            1       0    0   1       0        1     3        0        5</code></pre>
+## 1     0            0       0    0   0       0        0     0        0        0
+## 2     0            0       0    0   0       0        0     0        0        0
+## 3     0            0       0    0   0       0        0     0        0        0
+## 4     0            2       0    0   2       0        1     2        0        3
+## 5     0            0       0    0   0       0        0     2        0        2
+## 6     0            0       0    0   0       0        0     0        0        0</code></pre>
 <pre class="r"><code>biden_sa &lt;- get_nrc_sentiment(biden_sentiment_text)
 head(biden_sa)</code></pre>
 <pre><code>##   anger anticipation disgust fear joy sadness surprise trust negative positive
-## 1     0            0       0    0   0       0        1     1        0        1
-## 2     1            0       0    1   1       0        0     3        1        3
-## 3     0            1       0    3   1       1        1     5        1        6
-## 4     0            0       0    0   0       0        0     1        1        0
-## 5     3            2       2    4   2       3        2     4        5        3
-## 6     1            0       1    0   1       1        0     2        1        4</code></pre>
+## 1     0            0       0    1   1       1        0     2        1        1
+## 2     0            2       0    1   0       0        0     0        0        4
+## 3     1            0       1    1   0       1        0     0        3        0
+## 4     2            0       2    4   0       1        0     1        4        0
+## 5     1            0       0    0   1       1        0     3        3        4
+## 6     0            0       0    0   0       0        1     1        0        1</code></pre>
 <p>Jede Zeile in den Datensätzen <em>trump_sa</em> und <em>biden_sa</em> entspricht einem Tweet. Für jeden Emotionstyp bzw. jede Valenz gibt es eine Spalte. Die Scores können dazu genutzt werden, zu veranschaulichen welchen Anteil die jeweilige Emotion bzw. das jeweilige Senntiment(positve vs. negative) in den betrachteten Tweets der Kandidaten hat.</p>
 <div id="anteil-der-jeweiligen-emotionen-in-den-tweets-der-kandidaten" class="section level3">
 <h3>Anteil der jeweiligen Emotionen in den Tweets der Kandidaten</h3>

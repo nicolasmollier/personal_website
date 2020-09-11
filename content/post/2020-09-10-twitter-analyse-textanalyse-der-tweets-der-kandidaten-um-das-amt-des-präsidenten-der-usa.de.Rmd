@@ -50,7 +50,7 @@ library(syuzhet)
 ## Scrape the Data from Twitter
 
 ```{r}
-n_tweets <- 3000
+n_tweets <- 3200
 ```
 
 Als erstes laden wir die letzten `r n_tweets` Tweets der beiden Präsidentschaftskandidaten. Dazu nutzen wir die Pakete *rtweet* und *httpuv*, um über das Twitter API Zugriff auf die Tweets und die Profilinformationen zu erhalten. 
@@ -75,7 +75,7 @@ n_tweets <- nrow(trump_timeline)
 biden_timeline <- get_timeline(user = "JoeBiden", n = n_tweets)
 ```
 
-Die Funktion *get_timeline()* funktioniert bei Joe Biden sehr gut. Bei Donald Trump liefert sie jedoch stets weniger als die angefragte Anzahl an Tweets. Zudem schwankt die Anzahl der Tweets sehr. Das ist der Grund. Das ist der Grund, warum im Fall von Donald Trump die Konstruktion mit einer for-Schleife gewählt wurde. Sie versucht, nach und nach die noch nicht erhaltenen Tweets zu laden und anschließend alle erhaltenen Tweets in einem Datensatz *trump_timeline* zu vereinigen. So wird die Anzahl der erhaltenen Tweets erhöht. Die geforderte Anzahl von `r n_tweets` wird aber dennoch nicht erreicht. Für dieses Problem habe ich noch keine Lösung gefunden.
+Die Funktion *get_timeline()* funktioniert bei Joe Biden sehr gut. Bei Donald Trump liefert sie jedoch stets weniger als die angefragte Anzahl an Tweets. Zudem schwankt die Anzahl der Tweets sehr. Das ist der Grund, warum im Fall von Donald Trump die Konstruktion mit einer for-Schleife gewählt wurde. Sie versucht, nach und nach die noch nicht erhaltenen Tweets zu laden und anschließend alle erhaltenen Tweets in einem Datensatz *trump_timeline* zu vereinigen. So wird die Anzahl der erhaltenen Tweets erhöht. 
 
 ## Influence of Candidates
 
@@ -598,7 +598,7 @@ biden_sa_score_prop_emo <- biden_sa %>%
   bind_cols(sentiment = row.names(.))
 ```
 
-Anschließend verbinden wir die Datensätze *trump_sa_score_prop_emo* und *biden_sa_score_prop_emo* per *Inner Join* und bringen die Daten in eine Form, die es uns ermöglicht, die Daten zu visualisieren.
+Anschließend verbinden wir die Datensätze *trump_sa_score_prop_emo* und *biden_sa_score_prop_emo* per *Inner Join* und bringen die Daten in eine Form, die es uns ermöglicht, die Daten zu visualisieren. 
 
 ```{r}
 sa_score_prop_df <- trump_sa_score_prop_emo %>% 
