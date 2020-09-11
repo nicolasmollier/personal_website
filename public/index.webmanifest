@@ -2,8 +2,8 @@
   "name": "Nicolas Mollier",
   "short_name": "Nicolas Mollier",
   "lang": "de",
-  "theme_color": "#2962ff",
-  "background_color": "#2962ff",
+  "theme_color": "#25569c",
+  "background_color": "#25569c",
   "icons": [{
     "src": "/images/icon_hubb2c620e44f44b05f57a49afd6fd01f1_2551_192x192_fill_lanczos_center_2.png",
     "sizes": "192x192",
