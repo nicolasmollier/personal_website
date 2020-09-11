@@ -1,0 +1,1742 @@
+<!DOCTYPE html><html lang="de" >
+
+<head>
+
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="generator" content="Source Themes Academic 4.8.0">
+
+  
+
+  
+  
+
+  
+  
+  
+  
+  
+    
+    
+    
+  
+  
+
+  <meta name="author" content="Nicolas Mollier">
+
+  
+  
+  
+    
+  
+  <meta name="description" content="In dieser Analyse geht es darum die aktuellsten Tweets der Präsidentschaftskandidaten der USA von Twitter zu “scrapen”, die am häufigsten verwendeten Worte zu visualieren und eine inhaltliche Analyse der Tweets mittels Topic Modeling und Sentiment Analysis durchzuführen.">
+
+  
+  <link rel="alternate" hreflang="de" href="/post/twitter-analyse-textanalyse-der-tweets-der-kandidaten-um-das-amt-des-prasidenten-der-usa/">
+
+  
+
+
+  
+  
+  
+  <meta name="theme-color" content="#2962ff">
+  
+
+  
+  
+
+  
+  
+  
+  
+    
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.14.0/css/all.min.css" integrity="sha256-FMvZuGapsJLjouA6k7Eo2lusoAX9i0ShlWFG6qt7SLc=" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.css" integrity="sha256-Vzbj7sDDS/woiFS3uNKo8eIuni59rjyNGtXfstRzStA=" crossorigin="anonymous">
+
+    
+    
+    
+      
+    
+    
+      
+      
+        
+          <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.2/styles/github.min.css" crossorigin="anonymous" title="hl-light">
+          <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.2/styles/dracula.min.css" crossorigin="anonymous" title="hl-dark" disabled>
+        
+      
+    
+
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.5.1/leaflet.css" integrity="sha256-SHMGCYmST46SoyGgo4YR/9AlK1vf3ff84Aq9yK4hdqM=" crossorigin="anonymous">
+    
+
+    
+
+    
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/lazysizes/5.1.2/lazysizes.min.js" integrity="sha256-Md1qLToewPeKjfAHU1zyPwOutccPAm5tahnaw7Osw0A=" crossorigin="anonymous" async></script>
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+      
+
+      
+      
+        
+      
+
+      
+    
+      
+
+      
+      
+
+      
+    
+
+  
+
+  
+  
+  
+    
+      
+      
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Montserrat:400,700%7CRoboto:400,400italic,700%7CRoboto+Mono&display=swap">
+    
+  
+
+  
+  
+  
+  
+  <link rel="stylesheet" href="/css/academic.css">
+
+  
+
+
+
+
+  
+
+
+  
+  
+
+  
+
+  <link rel="manifest" href="/index.webmanifest">
+  <link rel="icon" type="image/png" href="/images/icon_hubb2c620e44f44b05f57a49afd6fd01f1_2551_32x32_fill_lanczos_center_2.png">
+  <link rel="apple-touch-icon" type="image/png" href="/images/icon_hubb2c620e44f44b05f57a49afd6fd01f1_2551_192x192_fill_lanczos_center_2.png">
+
+  <link rel="canonical" href="/post/twitter-analyse-textanalyse-der-tweets-der-kandidaten-um-das-amt-des-prasidenten-der-usa/">
+
+  
+  
+  
+  
+  
+  
+  
+    
+    
+  
+  
+  <meta property="twitter:card" content="summary">
+  
+  <meta property="og:site_name" content="Nicolas Mollier">
+  <meta property="og:url" content="/post/twitter-analyse-textanalyse-der-tweets-der-kandidaten-um-das-amt-des-prasidenten-der-usa/">
+  <meta property="og:title" content="Twitter Analyse: Textanalyse der Tweets der Kandidaten um das Amt des Präsidenten der USA | Nicolas Mollier">
+  <meta property="og:description" content="In dieser Analyse geht es darum die aktuellsten Tweets der Präsidentschaftskandidaten der USA von Twitter zu “scrapen”, die am häufigsten verwendeten Worte zu visualieren und eine inhaltliche Analyse der Tweets mittels Topic Modeling und Sentiment Analysis durchzuführen."><meta property="og:image" content="/images/icon_hubb2c620e44f44b05f57a49afd6fd01f1_2551_512x512_fill_lanczos_center_2.png">
+  <meta property="twitter:image" content="/images/icon_hubb2c620e44f44b05f57a49afd6fd01f1_2551_512x512_fill_lanczos_center_2.png"><meta property="og:locale" content="de">
+  
+    
+      <meta property="article:published_time" content="2020-09-10T00:00:00&#43;00:00">
+    
+    <meta property="article:modified_time" content="2020-09-10T10:18:33&#43;02:00">
+  
+
+  
+
+
+    
+
+
+
+
+
+
+  
+
+
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "/post/twitter-analyse-textanalyse-der-tweets-der-kandidaten-um-das-amt-des-prasidenten-der-usa/"
+  },
+  "headline": "Twitter Analyse: Textanalyse der Tweets der Kandidaten um das Amt des Präsidenten der USA",
+  
+  "datePublished": "2020-09-10T00:00:00Z",
+  "dateModified": "2020-09-10T10:18:33+02:00",
+  
+  "author": {
+    "@type": "Person",
+    "name": "Nicolas Mollier"
+  },
+  
+  "publisher": {
+    "@type": "Organization",
+    "name": "Nicolas Mollier",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "/images/icon_hubb2c620e44f44b05f57a49afd6fd01f1_2551_192x192_fill_lanczos_center_2.png"
+    }
+  },
+  "description": "In dieser Analyse geht es darum die aktuellsten Tweets der Präsidentschaftskandidaten der USA von Twitter zu “scrapen”, die am häufigsten verwendeten Worte zu visualieren und eine inhaltliche Analyse der Tweets mittels Topic Modeling und Sentiment Analysis durchzuführen."
+}
+</script>
+
+  
+
+  
+
+
+  
+
+
+  
+
+
+
+
+
+  <title>Twitter Analyse: Textanalyse der Tweets der Kandidaten um das Amt des Präsidenten der USA | Nicolas Mollier</title>
+
+</head>
+
+
+<body id="top" data-spy="scroll" data-offset="70" data-target="#TableOfContents" class=" ">
+
+  <aside class="search-results" id="search">
+  <div class="container">
+    <section class="search-header">
+
+      <div class="row no-gutters justify-content-between mb-3">
+        <div class="col-6">
+          <h1>Suche</h1>
+        </div>
+        <div class="col-6 col-search-close">
+          <a class="js-search" href="#"><i class="fas fa-times-circle text-muted" aria-hidden="true"></i></a>
+        </div>
+      </div>
+
+      <div id="search-box">
+        
+        <input name="q" id="search-query" placeholder="Suche..." autocapitalize="off"
+        autocomplete="off" autocorrect="off" spellcheck="false" type="search" class="form-control">
+        
+      </div>
+
+    </section>
+    <section class="section-search-results">
+
+      <div id="search-hits">
+        
+      </div>
+
+    </section>
+  </div>
+</aside>
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+<nav class="navbar navbar-expand-lg navbar-light compensate-for-scrollbar" id="navbar-main">
+  <div class="container">
+
+    
+    <div class="d-none d-lg-inline-flex">
+      <a class="navbar-brand" href="/">Nicolas Mollier</a>
+    </div>
+    
+
+    
+    <button type="button" class="navbar-toggler" data-toggle="collapse"
+            data-target="#navbar-content" aria-controls="navbar" aria-expanded="false" aria-label="Navigation einblenden">
+    <span><i class="fas fa-bars"></i></span>
+    </button>
+    
+
+    
+    <div class="navbar-brand-mobile-wrapper d-inline-flex d-lg-none">
+      <a class="navbar-brand" href="/">Nicolas Mollier</a>
+    </div>
+    
+
+    
+    
+    <div class="navbar-collapse main-menu-item collapse justify-content-start" id="navbar-content">
+
+      
+      <ul class="navbar-nav d-md-inline-flex">
+        
+
+        
+
+        
+        
+        
+          
+        
+
+        
+        
+        
+        
+        
+        
+          
+          
+          
+            
+          
+          
+        
+
+        <li class="nav-item">
+          <a class="nav-link " href="/#projects"><span>Projekte</span></a>
+        </li>
+
+        
+        
+
+        
+
+        
+        
+        
+          
+        
+
+        
+        
+        
+        
+        
+        
+
+        <li class="nav-item">
+          <a class="nav-link " href="/courses/"><span>Bücher</span></a>
+        </li>
+
+        
+        
+
+        
+
+        
+        
+        
+          
+        
+
+        
+        
+        
+        
+        
+        
+          
+          
+          
+            
+          
+          
+        
+
+        <li class="nav-item">
+          <a class="nav-link " href="/#contact"><span>Kontakt</span></a>
+        </li>
+
+        
+        
+
+        
+
+        
+        
+        
+          
+        
+
+        
+        
+        
+        
+        
+        
+
+        <li class="nav-item">
+          <a class="nav-link " href="/files/cv.pdf"><span>Lebenslauf</span></a>
+        </li>
+
+        
+        
+
+      
+
+        
+      </ul>
+    </div>
+
+    <ul class="nav-icons navbar-nav flex-row ml-auto d-flex pl-md-2">
+      
+      <li class="nav-item">
+        <a class="nav-link js-search" href="#" aria-label="Suche"><i class="fas fa-search" aria-hidden="true"></i></a>
+      </li>
+      
+
+      
+
+      
+
+    </ul>
+
+  </div>
+</nav>
+
+
+
+  <article class="article">
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+  
+  
+<div class="article-container pt-3">
+  <h1>Twitter Analyse: Textanalyse der Tweets der Kandidaten um das Amt des Präsidenten der USA</h1>
+
+  
+
+  
+    
+
+
+<div class="article-metadata">
+
+  
+  
+
+  
+  <span class="article-date">
+    
+    
+      
+          Zuletzt aktualisiert am
+      
+    
+    Sep 10, 2020
+  </span>
+  
+
+  
+
+  
+  <span class="middot-divider"></span>
+  <span class="article-reading-time">
+    20 min Lesezeit
+  </span>
+  
+
+  
+  
+  
+
+  
+  
+
+</div>
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+</div>
+
+
+
+  <div class="article-container">
+
+    <div class="article-style">
+      
+
+
+<p>In dieser Analyse geht es darum die aktuellsten Tweets der Präsidentschaftskandidaten der USA von Twitter zu “scrapen”, die am häufigsten verwendeten Worte zu visualieren und eine inhaltliche Analyse der Tweets mittels Topic Modeling und Sentiment Analysis durchzuführen.</p>
+<div id="packages" class="section level2">
+<h2>Packages</h2>
+<pre class="r"><code>library(tidyverse)
+library(lubridate)
+library(rtweet)
+library(httpuv)
+library(janitor)
+library(qdapRegex)
+library(tm)
+library(qdap)
+library(topicmodels)
+library(syuzhet)</code></pre>
+</div>
+<div id="scrape-the-data-from-twitter" class="section level2">
+<h2>Scrape the Data from Twitter</h2>
+<pre class="r"><code>n_tweets &lt;- 3000</code></pre>
+<p>Als erstes laden wir die letzten 3000 Tweets der beiden Präsidentschaftskandidaten. Dazu nutzen wir die Pakete <em>rtweet</em> und <em>httpuv</em>, um über das Twitter API Zugriff auf die Tweets und die Profilinformationen zu erhalten.</p>
+<pre class="r"><code>influence_canidates_df &lt;- lookup_users(c(&quot;realDonaldTrump&quot;, &quot;JoeBiden&quot;))
+
+trump_timeline_list &lt;- list()
+max_id &lt;- NULL
+
+for(i in 1:10){
+  trump_timeline_list[[i]] &lt;- get_timeline(user = &quot;realDonaldTrump&quot;, 
+                                           n = n_tweets, 
+                                           max_id = max_id)
+  max_id &lt;- min(trump_timeline_list[[i]]$status_id)
+}
+
+trump_timeline &lt;- bind_rows(trump_timeline_list) %&gt;% 
+  distinct(status_id, .keep_all = TRUE)
+
+n_tweets &lt;- nrow(trump_timeline)
+biden_timeline &lt;- get_timeline(user = &quot;JoeBiden&quot;, n = n_tweets)</code></pre>
+<p>Die Funktion <em>get_timeline()</em> funktioniert bei Joe Biden sehr gut. Bei Donald Trump liefert sie jedoch stets weniger als die angefragte Anzahl an Tweets. Zudem schwankt die Anzahl der Tweets sehr. Das ist der Grund. Das ist der Grund, warum im Fall von Donald Trump die Konstruktion mit einer for-Schleife gewählt wurde. Sie versucht, nach und nach die noch nicht erhaltenen Tweets zu laden und anschließend alle erhaltenen Tweets in einem Datensatz <em>trump_timeline</em> zu vereinigen. So wird die Anzahl der erhaltenen Tweets zwar von nur einigen Hundert auf etwa 1500 erhöht. Die geforderte Anzahl von 2386 wird aber dennoch nicht erreicht. Für dieses Problem habe ich noch keine Lösung gefunden.</p>
+</div>
+<div id="influence-of-candidates" class="section level2">
+<h2>Influence of Candidates</h2>
+<p>Bevor wir mit der Analyse der Tweets beginnen, werfen wir einen kurzen Blick darauf, welcher der Kandidaten die meisten Follower hat.</p>
+<pre class="r"><code>n_followers &lt;- influence_canidates_df %&gt;% 
+  select(screen_name, followers_count) %&gt;% 
+  arrange(desc(followers_count)) </code></pre>
+<pre class="r"><code>n_followers_trump &lt;- n_followers %&gt;% 
+  filter(screen_name == &quot;realDonaldTrump&quot;) %&gt;% 
+  select(followers_count) %&gt;% 
+  as_vector()
+
+n_followers_biden &lt;- n_followers %&gt;% 
+  filter(screen_name == &quot;JoeBiden&quot;) %&gt;% 
+  select(followers_count) %&gt;% 
+  as_vector()
+
+more_foll &lt;- (n_followers_trump / n_followers_biden) %&gt;% 
+  round(digits = 0)</code></pre>
+<p>Donald Trump hat mit 85880045 rund 9-mal so viele Follower wie Joe Biden.</p>
+</div>
+<div id="twitter-frequenz" class="section level2">
+<h2>Twitter Frequenz</h2>
+<p>Als nächstes betrachten wir, welcher der beiden Kandidaten pro Tag mehr Tweets absetzt. Da wir die Anzahl an Tweets pro Tag betrachten möchten, erstellen wir eine neue Variable <em>date</em>, die - anders als die Variable <em>created_at</em> - nicht mehr die genaue Uhrzeit des Posts enthält.</p>
+<pre class="r"><code>trump_timeline &lt;- trump_timeline %&gt;% 
+  mutate(date = as.Date(created_at)) 
+
+biden_timeline &lt;- biden_timeline %&gt;% 
+  mutate(date = as.Date(created_at))</code></pre>
+<p>Anschließend gruppieren wir den jeweiligen Datensatz gemäß der Variablen <em>date</em>, zählen die Tweets und speichern die Werte als <em>trump_tweets_per_day</em> und <em>biden_tweets_per_day</em>. Wir vereinigen die beiden Datensätze über einen Inner Join. So erhalten wir einen Datensatz mit den drei Variablen <em>date</em>, <em>n_trump</em> und <em>n_biden</em>. Um die Daten visualisieren zu können, überführen wir den Datensatz mit der Funktion <em>pivot_longer</em> in ein <em>tidy format</em>, bei dem jede Spalte einer Variablen und jede Zeile einer Observation entspricht. Anschließend erstellen wir mit <em>ggplot</em> eine Grafik, die die Anzahl der täglichen Tweets je Kandidat über den betrachteten Zeitraum gegenüberstellt.</p>
+<pre class="r"><code>trump_tweets_per_day &lt;- trump_timeline %&gt;% 
+  count(date) %&gt;% 
+  arrange(desc(n))
+
+biden_tweets_per_day &lt;- biden_timeline %&gt;% 
+  count(date) %&gt;% 
+  arrange(desc(n))
+
+trump_tweets_per_day %&gt;% 
+  inner_join(biden_tweets_per_day, 
+             by = &quot;date&quot;,
+             suffix = c(&quot;_trump&quot;, &quot;_biden&quot;)) %&gt;% 
+  pivot_longer(n_trump:n_biden,
+               names_to = &quot;candidate&quot;,
+               values_to = &quot;n_tweets&quot;) %&gt;% 
+  mutate(candidate = str_remove_all(candidate, &quot;n_&quot;)) %&gt;% 
+  mutate(candidate = factor(candidate, levels = c(&quot;trump&quot;, &quot;biden&quot;))) %&gt;% 
+  ggplot(aes(date, n_tweets, color = candidate)) +
+  geom_line(size = 0.7) +
+  labs(x = &quot;Date&quot;, y = &quot;Number of Tweets&quot;, 
+       title = &quot;Vergleich der Twitteraktivität&quot;,
+       subtitle = &quot;der Präsidentschaftskandidaten&quot;) +
+  scale_color_manual(values = c(&quot;orangered&quot;, &quot;dodgerblue2&quot;))</code></pre>
+<p><img src="/post/2020-09-10-twitter-analyse-textanalyse-der-tweets-der-kandidaten-um-das-amt-des-pr%C3%A4sidenten-der-usa.de_files/figure-html/unnamed-chunk-5-1.png" width="672" /></p>
+<p>Dabei fällt auf, dass Donald Trump deutlich häufiger Tweets absetzt als Joe Biden. Schauen wir uns, an was der Grund dafür sein könnte.</p>
+<pre class="r"><code>prop_retweet &lt;- trump_timeline %&gt;% 
+  bind_rows(biden_timeline) %&gt;% 
+  group_by(screen_name) %&gt;% 
+  summarize(prop_retweet = mean(is_retweet)) 
+
+prop_retweet %&gt;% 
+  knitr::kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">screen_name</th>
+<th align="right">prop_retweet</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">JoeBiden</td>
+<td align="right">0.0412500</td>
+</tr>
+<tr class="even">
+<td align="left">realDonaldTrump</td>
+<td align="right">0.5297569</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code>prop_retweet_trump &lt;- prop_retweet %&gt;% 
+  filter(screen_name == &quot;realDonaldTrump&quot;) %&gt;% 
+  select(prop_retweet) %&gt;% 
+  as_vector() %&gt;% 
+  scales::percent()
+
+prop_retweet_biden &lt;- prop_retweet %&gt;% 
+  filter(screen_name == &quot;JoeBiden&quot;) %&gt;% 
+  select(prop_retweet) %&gt;% 
+  as_vector() %&gt;% 
+  scales::percent()</code></pre>
+<p>Ein Grund für die deutliche höhere Twitter Frequenz von Donald Trump ist der deutlich höhere Anteil an Retweets bei ihm. Während der Anteil an Retweets an den betrachteten Tweets von Joe Biden nur etwa 4% betragen, bestehen die Tweets von Donald Trump mit rund 53% fast zur Hälfte aus Retweets. Betrachetn wir, wie sich der Vergleich der Anzahl an täglichen Tweets verändert, wenn wir Retweets zuvor entfernen.</p>
+<pre class="r"><code>trump_timeline &lt;- trump_timeline %&gt;% 
+  filter(!is_retweet)
+
+biden_timeline &lt;- biden_timeline %&gt;% 
+  filter(!is_retweet)</code></pre>
+<p>Auch ohne Retweets twittert Trump im Schnitt häufiger als Biden, allerdings ist der Unterschied deutlich geringer als zuvor.</p>
+<pre class="r"><code>trump_tweets_per_day &lt;- trump_timeline %&gt;% 
+  count(date) %&gt;% 
+  arrange(desc(n))
+
+biden_tweets_per_day &lt;- biden_timeline %&gt;% 
+  count(date) %&gt;% 
+  arrange(desc(n))
+
+trump_tweets_per_day %&gt;% 
+  inner_join(biden_tweets_per_day, 
+             by = &quot;date&quot;,
+             suffix = c(&quot;_trump&quot;, &quot;_biden&quot;)) %&gt;% 
+  pivot_longer(n_trump:n_biden,
+               names_to = &quot;candidate&quot;,
+               values_to = &quot;n_tweets&quot;) %&gt;% 
+  mutate(candidate = str_remove_all(candidate, &quot;n_&quot;)) %&gt;% 
+  mutate(candidate = factor(candidate, levels = c(&quot;trump&quot;, &quot;biden&quot;))) %&gt;%
+  ggplot(aes(date, n_tweets, color = candidate)) +
+  geom_line(size = 0.7) +
+  labs(x = &quot;Date&quot;, y = &quot;Number of Tweets&quot;, 
+       title = &quot;Vergleich der Twitteraktivität - ohne Retweets&quot;,
+       subtitle = &quot;der Präsidentschaftskandidaten&quot;) +
+  scale_color_manual(values = c(&quot;orangered&quot;, &quot;dodgerblue2&quot;))</code></pre>
+<p><img src="/post/2020-09-10-twitter-analyse-textanalyse-der-tweets-der-kandidaten-um-das-amt-des-pr%C3%A4sidenten-der-usa.de_files/figure-html/unnamed-chunk-8-1.png" width="672" /></p>
+</div>
+<div id="reaktionen-auf-die-tweets-der-kandidaten" class="section level2">
+<h2>Reaktionen auf die Tweets der Kandidaten</h2>
+<p>Nun gehen wir der Frage nach, wie häufig ein Retweet der jeweiligen Person retweeted wird bzw. wie viele Retweets die Kandidaten im Durchschnitt pro Tag hervorrufen.</p>
+<pre class="r"><code>mean_retweet_count_trump &lt;- trump_timeline %&gt;% 
+  summarise(mean_retweet_count = mean(retweet_count)) %&gt;% 
+  as_vector() %&gt;% 
+  round()
+mean_retweet_count_biden &lt;- biden_timeline %&gt;% 
+  summarise(mean_retweet_count = mean(retweet_count)) %&gt;% 
+  as_vector() %&gt;% 
+  round()
+prop_diff_retweets &lt;- (1 - mean_retweet_count_biden / mean_retweet_count_trump) </code></pre>
+<p>Donald Trumps Tweets erzielen im Durchschnitt 2.298910^{4}, die von Joe Biden 9359 und damit um etwa 59% weniger.</p>
+<p>Betrachten wir die durchschnittliche Anzahl an Retweets, die die Tweets der Kandidaten pro Tag auslösen. Nachdem wir für beide Kandidaten die durchschnittlichen täglichen Retweets berstimmt haben, verbinden wir beide Datensätze per Inner Join und bringen den vereinigten Datensatz in ein <em>tidy format</em>, um die Zeitreihe anschließend zu grafisch darzustellen.</p>
+<pre class="r"><code>trump_mean_retweet_per_day &lt;- trump_timeline %&gt;% 
+  select(screen_name, date, retweet_count) %&gt;% 
+  group_by(date) %&gt;% 
+  summarize(retweet_count = mean(retweet_count))
+
+
+biden_mean_retweet_per_day &lt;- biden_timeline %&gt;% 
+  select(screen_name, date, retweet_count) %&gt;% 
+  group_by(date) %&gt;% 
+  summarize(retweet_count = mean(retweet_count))
+
+mean_retweet_comparison &lt;- trump_mean_retweet_per_day %&gt;% 
+  inner_join(biden_mean_retweet_per_day, 
+             by = &quot;date&quot;,
+             suffix = c(&quot;_trump&quot;, &quot;_biden&quot;)) %&gt;% 
+  pivot_longer(retweet_count_trump:retweet_count_biden,
+               names_to = &quot;candidate&quot;,
+               values_to = &quot;retweet_count&quot;) %&gt;% 
+  mutate(candidate = str_remove_all(string = candidate, 
+                                    pattern = &quot;retweet_count_&quot;)) %&gt;% 
+  mutate(candidate = factor(candidate, levels = c(&quot;trump&quot;, &quot;biden&quot;)))
+  
+
+mean_retweet_comparison %&gt;% 
+  ggplot(aes(date, retweet_count, color = candidate)) +
+  geom_line(size = 0.7) +
+  labs(x = &quot;Date&quot;, y = &quot;&quot;, 
+       title = &quot;Durchschnittliche Anzahl an Retweets&quot;,
+       subtitle = &quot;die ein Tweet der Kandidaten auslöst&quot;) +
+  scale_color_manual(values = c(&quot;orangered&quot;, &quot;dodgerblue2&quot;))</code></pre>
+<p><img src="/post/2020-09-10-twitter-analyse-textanalyse-der-tweets-der-kandidaten-um-das-amt-des-pr%C3%A4sidenten-der-usa.de_files/figure-html/unnamed-chunk-10-1.png" width="672" /></p>
+<p>In der Regel werden die Tweets des Präsidenten öfters retweetet als die von Joe Biden.
+Allerdings geht aus der Grafik hervor, dass Joe Biden an einem bestimmten Tag ungewöhnlich viele Retweets erzielte.</p>
+<pre class="r"><code>mean_retweet_comparison %&gt;%
+  filter(candidate == &quot;biden&quot;) %&gt;% 
+  arrange(desc(retweet_count))</code></pre>
+<pre><code>## # A tibble: 70 x 3
+##    date       candidate retweet_count
+##    &lt;date&gt;     &lt;fct&gt;             &lt;dbl&gt;
+##  1 2020-08-11 biden            46829.
+##  2 2020-08-24 biden            24570.
+##  3 2020-09-04 biden            21966.
+##  4 2020-08-31 biden            21934.
+##  5 2020-07-04 biden            21482.
+##  6 2020-09-11 biden            21004 
+##  7 2020-07-17 biden            20377.
+##  8 2020-08-29 biden            20123 
+##  9 2020-07-06 biden            19756.
+## 10 2020-07-19 biden            19714.
+## # … with 60 more rows</code></pre>
+<pre class="r"><code>biden_timeline %&gt;% 
+  filter(date == &quot;2020-08-11&quot;) %&gt;% 
+  select(date, text, retweet_count) </code></pre>
+<pre><code>## # A tibble: 6 x 3
+##   date       text                                                  retweet_count
+##   &lt;date&gt;     &lt;chr&gt;                                                         &lt;int&gt;
+## 1 2020-08-11 &quot;Back when Kamala was Attorney General, she worked c…         34201
+## 2 2020-08-11 &quot;I have the great honor to announce that I’ve picked…        169980
+## 3 2020-08-11 &quot;Don&#39;t forget that in the middle of this pandemic, t…         10235
+## 4 2020-08-11 &quot;I promise you if I&#39;m elected, I won&#39;t waste any tim…         41675
+## 5 2020-08-11 &quot;This is the latest dire consequence of Donald Trump…          7380
+## 6 2020-08-11 &quot;Social Security is the bedrock of American retireme…         17504</code></pre>
+<p>Es stellt sich heraus, dass es sich bei diesem Tag um den 11.08.2020 handelt, den Tag, an dem Biden Kamala Harris als seine Kandidatin für das Amt des Vizepräsidenten bekanntgab.</p>
+<pre class="r"><code>trump_higher_retweet &lt;- mean_retweet_comparison %&gt;% 
+  pivot_wider(names_from = candidate,
+              values_from = retweet_count,
+              names_prefix = &quot;n_&quot;) %&gt;% 
+  mutate(trump_higher = n_trump &gt; n_biden) %&gt;% 
+  select_if(is.logical) %&gt;% 
+  colMeans() %&gt;% 
+  scales::percent()</code></pre>
+<p>Insegesamt über den betrachteten Zeitraum erzielten die Tweets von Trump aber an 84% der Tage mehr Retweets als die seines Herausforderers.</p>
+</div>
+<div id="populärste-tweets" class="section level2">
+<h2>Populärste Tweets</h2>
+<pre class="r"><code>biden_timeline %&gt;% 
+  filter(!is_retweet) %&gt;% 
+  select(text, retweet_count) %&gt;% 
+  arrange(desc(retweet_count)) %&gt;% 
+  head(n = 10)</code></pre>
+<pre><code>## # A tibble: 10 x 2
+##    text                                                            retweet_count
+##    &lt;chr&gt;                                                                   &lt;int&gt;
+##  1 &quot;I can’t believe I have to say this, but please don’t drink bl…        329835
+##  2 &quot;I have the great honor to announce that I’ve picked @KamalaHa…        169980
+##  3 &quot;When Donald Trump says tonight you won’t be safe in Joe Biden…        110381
+##  4 &quot;Mr. President, if you don’t respect our troops, you can’t lea…         92171
+##  5 &quot;Nearly 100,000 lives have been lost, and tens of millions are…         85802
+##  6 &quot;Donald Trump is the worst possible person to lead us through …         79114
+##  7 &quot;We can’t take four more years of this.&quot;                                78720
+##  8 &quot;You won&#39;t have to worry about my tweets when I&#39;m president.&quot;           77708
+##  9 &quot;Wear a mask.&quot;                                                          72816
+## 10 &quot;Remember: every example of violence Donald Trump decries has …         70079</code></pre>
+<pre class="r"><code>trump_timeline %&gt;% 
+  filter(!is_retweet) %&gt;% 
+  select(text, retweet_count) %&gt;% 
+  arrange(desc(retweet_count)) %&gt;% 
+  head(n = 10)</code></pre>
+<pre><code>## # A tibble: 10 x 2
+##    text                                                            retweet_count
+##    &lt;chr&gt;                                                                   &lt;int&gt;
+##  1 IF YOU CAN PROTEST IN PERSON, YOU CAN VOTE IN PERSON!                  138032
+##  2 DRAIN THE SWAMP! https://t.co/68M4sN7LLD                               119166
+##  3 China has caused great damage to the United States and the res…        109710
+##  4 https://t.co/36b2xC1GZf                                                 94649
+##  5 MAKE AMERICA GREAT AGAIN!                                               89206
+##  6 FAKE NEWS IS THE ENEMY OF THE PEOPLE!                                   85418
+##  7 We are going to WIN the 2020 Election, BIG! #MAGA                       83329
+##  8 Don’t buy GOODYEAR TIRES - They announced a BAN ON MAGA HATS. …         83227
+##  9 https://t.co/jXoffXyZed                                                 80250
+## 10 OPEN THE SCHOOLS!!!                                                     78324</code></pre>
+</div>
+<div id="analyse-der-tweets-text-analysis" class="section level2">
+<h2>Analyse der Tweets: Text Analysis</h2>
+<p>Bisher haben wir uns numerische Kennzahlen zu den Kandidaten angeschaut wie <em>Anzahl der Follower</em>, <em>Anzahl an Tweets pro Tag</em>, <em>Anzahl an Retweets pro Tweet</em> und einen ersten Blick auf die populärsten Tweets der Kandidaten geweorfen. Als nächstes wollen wir uns näher mit dem Inhalt der Tweets auseinandersetzen. Dabei betrachten wir häufig verwendete Worte der Kandidaten, bestimmen die Emotionen, die die Kandidaten in ihren Tweets ausdrücken und untersuchen, ob sich die Emotionen der populärsten Tweets von denen aller Tweets des jeweiligen Bewerbers unterscheiden. Zuvor müssen wir die Daten aber für die Textanalyse vorbereiten.</p>
+<div id="preparation" class="section level3">
+<h3>Preparation</h3>
+<p>Als erstes speichern wir die Tweets der Kandidaten jeweils in den Vektoren <em>trump_text</em> bzw. <em>biden_text</em> und entfernen Links und Sonderzeichen aus den Tweets.</p>
+<pre class="r"><code>trump_text &lt;- trump_timeline$text
+biden_text &lt;- biden_timeline$text
+
+trump_text_clean &lt;- trump_text %&gt;% 
+  rm_twitter_url() %&gt;% 
+  str_replace_all(&quot;[^A-Za-z]&quot;, &quot; &quot;) 
+
+biden_text_clean &lt;- biden_text %&gt;% 
+  rm_twitter_url() %&gt;% 
+  str_replace_all(&quot;[^A-Za-z]&quot;, &quot; &quot;) </code></pre>
+<p>Anschließend werden die Textvektoren in sogenannte <em>Corpora</em> umgewandelt.</p>
+<pre class="r"><code>trump_corpus &lt;- trump_text_clean %&gt;% 
+  VectorSource() %&gt;% 
+  Corpus()
+
+biden_corpus &lt;- biden_text_clean %&gt;% 
+  VectorSource() %&gt;% 
+  Corpus()</code></pre>
+<p>Wir wandeln alle in den Tweets verwendeten Großbuchstaben in Kleinbuchstaben um. Dadurch wird verhindert, dass z.B. die Worte “Big” und “big” als zwei unterschiedliche Worte gewertet werden.</p>
+<pre class="r"><code>trump_corpus &lt;- trump_corpus %&gt;% 
+  tm_map(str_to_lower)
+
+biden_corpus &lt;- biden_corpus %&gt;% 
+  tm_map(str_to_lower)</code></pre>
+<p>Die Tweets enthalten zu einem großen Teil sogenannte Stopwords wie z.B. “and” und “have”.</p>
+<pre class="r"><code>stopwords(&quot;en&quot;)</code></pre>
+<pre><code>##   [1] &quot;i&quot;          &quot;me&quot;         &quot;my&quot;         &quot;myself&quot;     &quot;we&quot;        
+##   [6] &quot;our&quot;        &quot;ours&quot;       &quot;ourselves&quot;  &quot;you&quot;        &quot;your&quot;      
+##  [11] &quot;yours&quot;      &quot;yourself&quot;   &quot;yourselves&quot; &quot;he&quot;         &quot;him&quot;       
+##  [16] &quot;his&quot;        &quot;himself&quot;    &quot;she&quot;        &quot;her&quot;        &quot;hers&quot;      
+##  [21] &quot;herself&quot;    &quot;it&quot;         &quot;its&quot;        &quot;itself&quot;     &quot;they&quot;      
+##  [26] &quot;them&quot;       &quot;their&quot;      &quot;theirs&quot;     &quot;themselves&quot; &quot;what&quot;      
+##  [31] &quot;which&quot;      &quot;who&quot;        &quot;whom&quot;       &quot;this&quot;       &quot;that&quot;      
+##  [36] &quot;these&quot;      &quot;those&quot;      &quot;am&quot;         &quot;is&quot;         &quot;are&quot;       
+##  [41] &quot;was&quot;        &quot;were&quot;       &quot;be&quot;         &quot;been&quot;       &quot;being&quot;     
+##  [46] &quot;have&quot;       &quot;has&quot;        &quot;had&quot;        &quot;having&quot;     &quot;do&quot;        
+##  [51] &quot;does&quot;       &quot;did&quot;        &quot;doing&quot;      &quot;would&quot;      &quot;should&quot;    
+##  [56] &quot;could&quot;      &quot;ought&quot;      &quot;i&#39;m&quot;        &quot;you&#39;re&quot;     &quot;he&#39;s&quot;      
+##  [61] &quot;she&#39;s&quot;      &quot;it&#39;s&quot;       &quot;we&#39;re&quot;      &quot;they&#39;re&quot;    &quot;i&#39;ve&quot;      
+##  [66] &quot;you&#39;ve&quot;     &quot;we&#39;ve&quot;      &quot;they&#39;ve&quot;    &quot;i&#39;d&quot;        &quot;you&#39;d&quot;     
+##  [71] &quot;he&#39;d&quot;       &quot;she&#39;d&quot;      &quot;we&#39;d&quot;       &quot;they&#39;d&quot;     &quot;i&#39;ll&quot;      
+##  [76] &quot;you&#39;ll&quot;     &quot;he&#39;ll&quot;      &quot;she&#39;ll&quot;     &quot;we&#39;ll&quot;      &quot;they&#39;ll&quot;   
+##  [81] &quot;isn&#39;t&quot;      &quot;aren&#39;t&quot;     &quot;wasn&#39;t&quot;     &quot;weren&#39;t&quot;    &quot;hasn&#39;t&quot;    
+##  [86] &quot;haven&#39;t&quot;    &quot;hadn&#39;t&quot;     &quot;doesn&#39;t&quot;    &quot;don&#39;t&quot;      &quot;didn&#39;t&quot;    
+##  [91] &quot;won&#39;t&quot;      &quot;wouldn&#39;t&quot;   &quot;shan&#39;t&quot;     &quot;shouldn&#39;t&quot;  &quot;can&#39;t&quot;     
+##  [96] &quot;cannot&quot;     &quot;couldn&#39;t&quot;   &quot;mustn&#39;t&quot;    &quot;let&#39;s&quot;      &quot;that&#39;s&quot;    
+## [101] &quot;who&#39;s&quot;      &quot;what&#39;s&quot;     &quot;here&#39;s&quot;     &quot;there&#39;s&quot;    &quot;when&#39;s&quot;    
+## [106] &quot;where&#39;s&quot;    &quot;why&#39;s&quot;      &quot;how&#39;s&quot;      &quot;a&quot;          &quot;an&quot;        
+## [111] &quot;the&quot;        &quot;and&quot;        &quot;but&quot;        &quot;if&quot;         &quot;or&quot;        
+## [116] &quot;because&quot;    &quot;as&quot;         &quot;until&quot;      &quot;while&quot;      &quot;of&quot;        
+## [121] &quot;at&quot;         &quot;by&quot;         &quot;for&quot;        &quot;with&quot;       &quot;about&quot;     
+## [126] &quot;against&quot;    &quot;between&quot;    &quot;into&quot;       &quot;through&quot;    &quot;during&quot;    
+## [131] &quot;before&quot;     &quot;after&quot;      &quot;above&quot;      &quot;below&quot;      &quot;to&quot;        
+## [136] &quot;from&quot;       &quot;up&quot;         &quot;down&quot;       &quot;in&quot;         &quot;out&quot;       
+## [141] &quot;on&quot;         &quot;off&quot;        &quot;over&quot;       &quot;under&quot;      &quot;again&quot;     
+## [146] &quot;further&quot;    &quot;then&quot;       &quot;once&quot;       &quot;here&quot;       &quot;there&quot;     
+## [151] &quot;when&quot;       &quot;where&quot;      &quot;why&quot;        &quot;how&quot;        &quot;all&quot;       
+## [156] &quot;any&quot;        &quot;both&quot;       &quot;each&quot;       &quot;few&quot;        &quot;more&quot;      
+## [161] &quot;most&quot;       &quot;other&quot;      &quot;some&quot;       &quot;such&quot;       &quot;no&quot;        
+## [166] &quot;nor&quot;        &quot;not&quot;        &quot;only&quot;       &quot;own&quot;        &quot;same&quot;      
+## [171] &quot;so&quot;         &quot;than&quot;       &quot;too&quot;        &quot;very&quot;</code></pre>
+<p>Diese Worte bieten für sich alleine betrachtet für die inhaltliche Analyse keinen Mehrwert und trüben stattdessen den Blick auf die wesentlichen, individuellen Worte der Kandidaten. Deshalb werden zunächst die gängigsten Stopwords entfernt.</p>
+<pre class="r"><code>trump_corpus &lt;- trump_corpus %&gt;% 
+  tm_map(removeWords, stopwords(&quot;en&quot;))
+
+biden_corpus &lt;- biden_corpus %&gt;% 
+  tm_map(removeWords, stopwords(&quot;en&quot;))</code></pre>
+<p>Nach Entfernung der Sonderzeichen, der Umformung in Kleinbuchstaben und der Entfernung der Stopwords, sehen die einzelnen Tweets etwa so aus, wie diese zwei Beispiele:</p>
+<pre class="r"><code>trump_corpus[[3]]$content</code></pre>
+<pre><code>## [1] &quot; joe biden  elected  far left lunatics won t just  running failed dem cities  will  running  department  justice   department  homeland security    u s  supreme court   city  town  suburb will  safe   november  rd   vote will save america &quot;</code></pre>
+<pre class="r"><code>biden_corpus[[3]]$content</code></pre>
+<pre><code>## [1] &quot;donald trump  holding  rally  michigan today  also refusing  fully fund  national guard    frontline workers  covid     responsible  testing  distributing food  medical supplies  michiganders need  pandemic response   pep rally &quot;</code></pre>
+</div>
+<div id="häufig-verwendete-begriffe" class="section level3">
+<h3>Häufig verwendete Begriffe</h3>
+<p>Als nächstes schauen wir, welche Worte die Kandidaten am häufigsten verwenden.</p>
+<pre class="r"><code>term_count_trump &lt;- freq_terms(trump_corpus, 50)
+term_count_biden &lt;- freq_terms(biden_corpus, 50)
+
+head(term_count_trump, 20)</code></pre>
+<pre><code>##    WORD      FREQ
+## 1  will       258
+## 2  great      199
+## 3  amp        140
+## 4  s          129
+## 5  t          110
+## 6  people     103
+## 7  biden       95
+## 8  thank       89
+## 9  news        87
+## 10 fake        80
+## 11 big         77
+## 12 just        77
+## 13 joe         74
+## 14 now         74
+## 15 never       71
+## 16 democrats   63
+## 17 new         61
+## 18 even        59
+## 19 left        59
+## 20 many        56</code></pre>
+<pre class="r"><code>head(term_count_biden, 20)</code></pre>
+<pre><code>##    WORD      FREQ
+## 1  s         1103
+## 2  trump      716
+## 3  president  579
+## 4  donald     512
+## 5  t          493
+## 6  can        443
+## 7  will       432
+## 8  need       387
+## 9  re         315
+## 10 nation     299
+## 11 one        295
+## 12 us         272
+## 13 american   264
+## 14 people     253
+## 15 get        251
+## 16 country    249
+## 17 m          237
+## 18 ll         236
+## 19 every      222
+## 20 make       222</code></pre>
+<p>Es ist erkennbar, dass die Tweets immer noch Worte (und Buchstaben) enthalten, die für die inhaltliche Auswertung der Tweets störend sind. Aus diesem Grund werden weitere Stopwords entfernt. Die Auswahl, welche weiteren Worte zu entfernen sind, ist natürlich subjektiv. Dieser Subjektivität sollte man sich bewusst sein, um einem möglichen Bias bei der Auswahl entgegenwirken zu können.</p>
+<pre class="r"><code>custom_stop &lt;- c(&quot;will&quot;, &quot;amp&quot;, &quot;s&quot;, &quot;t&quot;, &quot;just&quot;, &quot;now&quot;, &quot;new&quot;, &quot;never&quot;, 
+                 &quot;complete&quot;, &quot;total&quot;, &quot;m&quot;, &quot;like&quot;, &quot;even&quot;, &quot;re&quot;, &quot;ll&quot;, 
+                 &quot;ve&quot;, &quot;just&quot;, &quot;let&quot;, &quot;can&quot;, &quot;need&quot;, &quot;every&quot;, &quot;make&quot;, 
+                 &quot;one&quot;, &quot;get&quot;, &quot;take&quot;, &quot;going&quot;, &quot;ob&quot;, &quot;isn&quot;, &quot;also&quot;, 
+                 &quot;got&quot;, &quot;vets&quot;, &quot;made&quot;, &quot;across&quot;, &quot;second&quot;, &quot;first&quot;, 
+                 &quot;many&quot;, &quot;want&quot;, &quot;day&quot;, &quot;time&quot;, &quot;today&quot;, &quot;much&quot;, &quot;done&quot;, 
+                 &quot;way&quot;, &quot;back&quot;, &quot;years&quot;, &quot;must&quot;, &quot;nothing&quot;, &quot;ever&quot;, 
+                 &quot;ensure&quot;, &quot;know&quot;, &quot;really&quot;)
+
+trump_corpus &lt;- trump_corpus %&gt;% 
+  tm_map(removeWords, custom_stop)
+
+biden_corpus &lt;- biden_corpus %&gt;% 
+  tm_map(removeWords, custom_stop)</code></pre>
+<pre class="r"><code>n_freq_words &lt;- 15</code></pre>
+<p>Betrachten wir nun einen <em>Bar Plot</em> der 15 häufigsten Wörter, die Joe Biden und Donald Trump jeweils in ihren Tweets verwenden.</p>
+<pre class="r"><code>term_count_clean_trump &lt;- freq_terms(trump_corpus, n_freq_words)
+
+term_count_clean_trump %&gt;% 
+  ggplot(aes(reorder(WORD, FREQ), FREQ)) +
+  geom_bar(stat = &quot;identity&quot;) +
+  labs(x = &quot;&quot;, y = &quot;Häufigkeit&quot;, 
+       title = &quot;Am häufigsten von Donald Trump verwendete Worte&quot;,
+       subtitle = &quot;nach Entfernung von Stopwords&quot;) +
+  coord_flip()</code></pre>
+<p><img src="/post/2020-09-10-twitter-analyse-textanalyse-der-tweets-der-kandidaten-um-das-amt-des-pr%C3%A4sidenten-der-usa.de_files/figure-html/unnamed-chunk-22-1.png" width="672" /></p>
+<pre class="r"><code>term_count_clean_biden &lt;- freq_terms(biden_corpus, n_freq_words)
+
+term_count_clean_biden %&gt;% 
+  ggplot(aes(reorder(WORD, FREQ), FREQ)) +
+  geom_bar(stat = &quot;identity&quot;) +
+  labs(x = &quot;&quot;, y = &quot;Häufigkeit&quot;, 
+       title = &quot;Am häufigsten von Joe Biden verwendete Worte&quot;,
+       subtitle = &quot;nach Entfernung von Stopwords&quot;) +
+  coord_flip()</code></pre>
+<p><img src="/post/2020-09-10-twitter-analyse-textanalyse-der-tweets-der-kandidaten-um-das-amt-des-pr%C3%A4sidenten-der-usa.de_files/figure-html/unnamed-chunk-22-2.png" width="672" /></p>
+<p>Alternativ können wir die am häufigsten verwendeten Wörter noch kompakter in Form einer <em>Word Cloud</em> darstellen, bei der die Größe des Wortes proportional zu der Häufigkeit seiner Verwendung steht.</p>
+<pre class="r"><code>trump_corpus %&gt;%
+  wordcloud::wordcloud(max.words = 70, 
+                       colors = brewer.pal(6, &quot;Dark2&quot;), 
+                       scale = c(3, 0.5), 
+                       random.order = FALSE)</code></pre>
+<p><img src="/post/2020-09-10-twitter-analyse-textanalyse-der-tweets-der-kandidaten-um-das-amt-des-pr%C3%A4sidenten-der-usa.de_files/figure-html/unnamed-chunk-23-1.png" width="672" /></p>
+<pre class="r"><code>biden_corpus %&gt;%
+  wordcloud::wordcloud(max.words = 70, 
+                       colors = brewer.pal(6, &quot;Dark2&quot;), 
+                       scale = c(3, 0.5), 
+                       random.order = FALSE)</code></pre>
+<p><img src="/post/2020-09-10-twitter-analyse-textanalyse-der-tweets-der-kandidaten-um-das-amt-des-pr%C3%A4sidenten-der-usa.de_files/figure-html/unnamed-chunk-23-2.png" width="672" /></p>
+<p>Trump verwendet am häufigsten das Wort “great”. Bei Biden sind es die beiden Worte “president” und “trump”, die am häufigsten verwendet werden. Es scheint so, als würde sich Joe Biden in seinen Tweets vor allem an Donald Trump abarbeiten, während umgekehrt Donald Trump seinen Herausforderer deutlich seltener in seinen Tweets erwähnt.</p>
+<pre class="r"><code>rank_crisis &lt;- which(term_count_biden$WORD == &quot;crisis&quot;)</code></pre>
+<p>Donald Trump verwendet deutlich häufiger positive Adjektive wie “great” und “good”. Das kann darin begründet liegen, dass Trump als Amtsinhaber bestrebt ist, seine bisherige Politik als Erfolg zu verkaufen, während Joe Biden bestrebt sein wird, eine gegenteilige Darstellung zu verbreiten. So ist das Wort “crisis” bei Joe Biden auf Rang 24 der meistverwendeten Worte, bei Donald Trump kommt es nicht einmal unter den 1000 meistverwendeten Worten.</p>
+<pre class="r"><code>freq_terms(trump_corpus, 1000) %&gt;% 
+  filter(WORD == &quot;crisis&quot;)</code></pre>
+<pre><code>## [1] WORD FREQ
+## &lt;0 rows&gt; (or 0-length row.names)</code></pre>
+</div>
+</div>
+<div id="topic-modeling" class="section level2">
+<h2>Topic Modeling</h2>
+<p>Nachdem wir bereits die am häufigsten verwendeten Wörter betrachtet haben, versuchen wir nun aus den verwendeten Worten und deren gemeinsamen Auftreten, Themen der Tweets zu identifizieren.</p>
+<div id="preparation-1" class="section level3">
+<h3>Preparation</h3>
+<p>Zunächst müssen die Daten aber in ein für die <em>Topic Analysis</em> passendes Format gebracht werden.</p>
+<pre class="r"><code>dtm_trump &lt;- DocumentTermMatrix(trump_corpus)
+inspect(dtm_trump)</code></pre>
+<pre><code>## &lt;&lt;DocumentTermMatrix (documents: 1122, terms: 3245)&gt;&gt;
+## Non-/sparse entries: 11149/3629741
+## Sparsity           : 100%
+## Maximal term length: 21
+## Weighting          : term frequency (tf)
+## Sample             :
+##      Terms
+## Docs  biden big democrats fake great joe left news people thank
+##   32      0   0         0    0     0   0    0    0      1     0
+##   5       1   0         0    0     0   1    0    0      0     0
+##   506     2   0         0    0     0   0    0    0      1     0
+##   528     0   0         0    0     1   0    0    0      0     0
+##   541     1   0         0    0     0   2    1    0      0     0
+##   650     0   0         0    0     0   0    0    0      0     0
+##   776     0   1         0    0     0   0    0    0      0     0
+##   779     0   0         1    0     0   0    0    0      0     0
+##   919     0   1         1    0     1   0    1    0      1     0
+##   938     0   0         0    0     0   0    1    0      0     0</code></pre>
+<pre class="r"><code>row_totals_trump &lt;- dtm_trump %&gt;% 
+  apply(1, sum)
+
+dtm_trump &lt;- dtm_trump[row_totals_trump &gt; 0, ]
+
+
+dtm_biden &lt;- DocumentTermMatrix(biden_corpus)
+inspect(dtm_biden)</code></pre>
+<pre><code>## &lt;&lt;DocumentTermMatrix (documents: 2301, terms: 5143)&gt;&gt;
+## Non-/sparse entries: 32110/11801933
+## Sparsity           : 100%
+## Maximal term length: 25
+## Weighting          : term frequency (tf)
+## Sample             :
+##       Terms
+## Docs   america american country crisis donald nation people president together
+##   1006       0        0       0      0      0      0      0         0        0
+##   1050       0        0       0      0      0      0      0         0        0
+##   1117       0        0       0      0      0      0      0         0        0
+##   1313       0        0       0      0      0      0      0         0        0
+##   1397       0        0       0      0      0      0      0         0        0
+##   1545       0        0       0      1      0      0      0         0        0
+##   1827       0        1       0      0      0      0      0         0        0
+##   2168       0        0       0      0      0      0      0         0        0
+##   397        0        0       0      0      0      0      0         0        0
+##   787        0        0       0      0      0      0      0         0        0
+##       Terms
+## Docs   trump
+##   1006     1
+##   1050     0
+##   1117     0
+##   1313     0
+##   1397     0
+##   1545     0
+##   1827     0
+##   2168     0
+##   397      0
+##   787      1</code></pre>
+<pre class="r"><code>row_totals_biden &lt;- dtm_biden %&gt;% 
+  apply(1, sum)
+
+dtm_biden &lt;- dtm_biden[row_totals_biden &gt; 0, ]</code></pre>
+</div>
+<div id="modellierung" class="section level3">
+<h3>Modellierung</h3>
+<p>Anschließend wird die Latent Dirichlet Allocation (LDA) durchgeführt, um Themenfelder in den Tweets zu erkennen.</p>
+<pre class="r"><code>lda_5_trump &lt;- LDA(dtm_trump, k = 6)
+lda_5_biden &lt;- LDA(dtm_biden, k = 6)
+
+terms(lda_5_trump, 5)</code></pre>
+<pre><code>##      Topic 1       Topic 2  Topic 3    Topic 4     Topic 5  Topic 6  
+## [1,] &quot;great&quot;       &quot;thank&quot;  &quot;portland&quot; &quot;democrats&quot; &quot;biden&quot;  &quot;news&quot;   
+## [2,] &quot;endorsement&quot; &quot;great&quot;  &quot;federal&quot;  &quot;russia&quot;    &quot;big&quot;    &quot;fake&quot;   
+## [3,] &quot;election&quot;    &quot;people&quot; &quot;democrat&quot; &quot;country&quot;   &quot;joe&quot;    &quot;great&quot;  
+## [4,] &quot;win&quot;         &quot;state&quot;  &quot;law&quot;      &quot;great&quot;     &quot;prices&quot; &quot;foxnews&quot;
+## [5,] &quot;amendment&quot;   &quot;usdot&quot;  &quot;national&quot; &quot;history&quot;   &quot;drug&quot;   &quot;china&quot;</code></pre>
+<pre class="r"><code>terms(lda_5_biden, 5)</code></pre>
+<pre><code>##      Topic 1     Topic 2     Topic 3     Topic 4    Topic 5  Topic 6    
+## [1,] &quot;president&quot; &quot;trump&quot;     &quot;nation&quot;    &quot;american&quot; &quot;trump&quot;  &quot;trump&quot;    
+## [2,] &quot;donald&quot;    &quot;president&quot; &quot;president&quot; &quot;people&quot;   &quot;donald&quot; &quot;president&quot;
+## [3,] &quot;country&quot;   &quot;donald&quot;    &quot;donald&quot;    &quot;together&quot; &quot;nation&quot; &quot;american&quot; 
+## [4,] &quot;people&quot;    &quot;crisis&quot;    &quot;help&quot;      &quot;trump&quot;    &quot;white&quot;  &quot;america&quot;  
+## [5,] &quot;trump&quot;     &quot;country&quot;   &quot;covid&quot;     &quot;covid&quot;    &quot;people&quot; &quot;nation&quot;</code></pre>
+</div>
+</div>
+<div id="sentiment-analysis" class="section level2">
+<h2>Sentiment Analysis</h2>
+<p>Bei der Sentiment Analysis geht es darum, die Emotionen, die in den Tweets ausgedrückt werden, zu identifizieren.</p>
+<p>Zunächst muss der jeweilige <em>Corpus</em> in ein sogenanntes <em>Plain Text Document</em> umgewandelt werden. Anschließend werden die Tweets in den Vektoren <em>trump_sentiment_text</em> bzw. <em>biden_sentiment_text</em> gespeichert.</p>
+<pre class="r"><code>trump_sentiment &lt;- tm_map(trump_corpus, PlainTextDocument)
+trump_sentiment_text &lt;- trump_sentiment[[&quot;content&quot;]]$content
+
+biden_sentiment &lt;- tm_map(biden_corpus, PlainTextDocument)
+biden_sentiment_text &lt;- biden_sentiment[[&quot;content&quot;]]$content</code></pre>
+<p>Mit der Funktion <em>get_nrc_sentiment</em> werden die in den Tweets verwendeten Worte gemäß dem <em>NRC sentiment dictionary</em> in 10 Kategorien klassifiziert.</p>
+<pre class="r"><code>trump_sa &lt;- get_nrc_sentiment(trump_sentiment_text)
+head(trump_sa)</code></pre>
+<pre><code>##   anger anticipation disgust fear joy sadness surprise trust negative positive
+## 1     1            1       0    1   2       1        1     2        1        2
+## 2     2            0       1    2   0       2        0     0        2        1
+## 3     2            2       0    1   3       1        1     4        1        5
+## 4     1            0       1    2   0       1        0     0        2        1
+## 5     2            1       1    1   0       3        0     1        4        2
+## 6     1            1       0    0   1       0        1     3        0        5</code></pre>
+<pre class="r"><code>biden_sa &lt;- get_nrc_sentiment(biden_sentiment_text)
+head(biden_sa)</code></pre>
+<pre><code>##   anger anticipation disgust fear joy sadness surprise trust negative positive
+## 1     0            0       0    0   0       0        1     1        0        1
+## 2     1            0       0    1   1       0        0     3        1        3
+## 3     0            1       0    3   1       1        1     5        1        6
+## 4     0            0       0    0   0       0        0     1        1        0
+## 5     3            2       2    4   2       3        2     4        5        3
+## 6     1            0       1    0   1       1        0     2        1        4</code></pre>
+<p>Jede Zeile in den Datensätzen <em>trump_sa</em> und <em>biden_sa</em> entspricht einem Tweet. Für jeden Emotionstyp bzw. jede Valenz gibt es eine Spalte. Die Scores können dazu genutzt werden, zu veranschaulichen welchen Anteil die jeweilige Emotion bzw. das jeweilige Senntiment(positve vs. negative) in den betrachteten Tweets der Kandidaten hat.</p>
+<div id="anteil-der-jeweiligen-emotionen-in-den-tweets-der-kandidaten" class="section level3">
+<h3>Anteil der jeweiligen Emotionen in den Tweets der Kandidaten</h3>
+<p>Zunächst summieren wir die Scores für die 8 Emotionen spaltenweise auf. Die so erhaltenen Summen pro Emotion werden nun jeweils ins Verhältnis zu den gesamten Scores der 8 Emotionen gesetzt. Das machen wir für Trump und Biden.</p>
+<pre class="r"><code>trump_sa_score_prop_emo &lt;- trump_sa %&gt;% 
+  select(1:8) %&gt;% 
+  colSums() %&gt;% 
+  prop.table() %&gt;% 
+  data.frame(.) %&gt;% 
+  rename(&quot;prop&quot; = &quot;.&quot;) %&gt;% 
+  bind_cols(sentiment = row.names(.))
+
+biden_sa_score_prop_emo &lt;- biden_sa %&gt;% 
+  select(1:8) %&gt;% 
+  colSums() %&gt;% 
+  prop.table() %&gt;% 
+  data.frame(.) %&gt;% 
+  rename(&quot;prop&quot; = &quot;.&quot;) %&gt;% 
+  bind_cols(sentiment = row.names(.))</code></pre>
+<p>Anschließend verbinden wir die Datensätze <em>trump_sa_score_prop_emo</em> und <em>biden_sa_score_prop_emo</em> per <em>Inner Join</em> und bringen die Daten in eine Form, die es uns ermöglicht, die Daten zu visualisieren.</p>
+<pre class="r"><code>sa_score_prop_df &lt;- trump_sa_score_prop_emo %&gt;% 
+  inner_join(biden_sa_score_prop_emo,
+             by = &quot;sentiment&quot;,
+             suffix = c(&quot;_trump&quot;, &quot;_biden&quot;)) %&gt;% 
+  pivot_longer(c(prop_trump, prop_biden),
+               names_to = &quot;candidate&quot;,
+               values_to = &quot;prop&quot;) %&gt;% 
+  mutate(candidate = str_replace_all(string = candidate,
+                                     pattern = &quot;prop_&quot;,
+                                     replacement = &quot;&quot;)) %&gt;% 
+  mutate(candidate = factor(candidate, levels = c(&quot;trump&quot;, &quot;biden&quot;))) </code></pre>
+<p>Die nachfolgende Grafik gibt für jede der Emotionen an, wie hoch ihr Anteil an den Tweets des jeweiligen Kandidaten für die Präsidentschaft ist.</p>
+<pre class="r"><code>sa_score_prop_df %&gt;% 
+  ggplot(aes(fct_reorder(sentiment, prop), prop, fill = candidate)) +
+  geom_bar(stat = &quot;identity&quot;, position = &quot;dodge&quot;) +
+  scale_fill_manual(values = c(&quot;orangered&quot;, &quot;dodgerblue2&quot;)) +
+  labs(x = &quot;Sentiment&quot;, y = &quot;&quot;,
+       title = &quot;Anteil der Emotionen in den Tweets&quot;,
+       subtitle = &quot;der jeweiligen Kandidaten&quot;) +
+  scale_y_continuous(labels = scales::percent)</code></pre>
+<p><img src="/post/2020-09-10-twitter-analyse-textanalyse-der-tweets-der-kandidaten-um-das-amt-des-pr%C3%A4sidenten-der-usa.de_files/figure-html/unnamed-chunk-33-1.png" width="672" /></p>
+<p>Biden liegt insebesondere bei den Emotionen <em>trust</em> und <em>surprise</em> vor Trump, während Trump bei den Emotionen <em>disgust</em>, <em>sadness</em>, <em>anger</em> und <em>fear</em> vorne liegt. Bei <em>joy</em> und <em>anticipation</em> liegen beide etwa gleichauf.</p>
+</div>
+<div id="anteil-der-positivität-vs.negativität" class="section level3">
+<h3>Anteil der Positivität vs. Negativität</h3>
+<p>Neben den 8 Emotionen liefert die Sentiment Analysis bei Nutzung des NRC Lexikons auch Scores für die Kategorien <em>Positiv</em> und <em>Negativ</em>. Für diese Kategorien wiederholen wir die Schritte, die wir bei der Untersuchung der Emotionen durchgeführt haben analog.</p>
+<pre class="r"><code>trump_sa_score_prop_pos &lt;- trump_sa %&gt;% 
+  select(negative, positive) %&gt;%  # negative und positive statt der 8 Emotionen
+  colSums() %&gt;% 
+  prop.table() %&gt;% 
+  data.frame(.) %&gt;% 
+  rename(&quot;prop&quot; = &quot;.&quot;) %&gt;% 
+  bind_cols(sentiment = row.names(.))
+
+biden_sa_score_prop_pos &lt;- biden_sa %&gt;% 
+  select(negative, positive) %&gt;%  # negative und positive statt der 8 Emotionen
+  colSums() %&gt;% 
+  prop.table() %&gt;% 
+  data.frame(.) %&gt;% 
+  rename(&quot;prop&quot; = &quot;.&quot;) %&gt;% 
+  bind_cols(sentiment = row.names(.))
+
+sa_score_prop_pos_df &lt;- trump_sa_score_prop_pos %&gt;% 
+  inner_join(biden_sa_score_prop_pos,
+             by = &quot;sentiment&quot;,
+             suffix = c(&quot;_trump&quot;, &quot;_biden&quot;)) %&gt;% 
+  pivot_longer(c(prop_trump, prop_biden),
+               names_to = &quot;candidate&quot;,
+               values_to = &quot;prop&quot;) %&gt;% 
+  mutate(candidate = str_replace_all(string = candidate,
+                                     pattern = &quot;prop_&quot;,
+                                     replacement = &quot;&quot;)) %&gt;% 
+  mutate(candidate = factor(candidate, levels = c(&quot;trump&quot;, &quot;biden&quot;))) 
+
+
+sa_score_prop_pos_df %&gt;% 
+  ggplot(aes(fct_reorder(sentiment, prop), prop, fill = candidate)) +
+  geom_bar(stat = &quot;identity&quot;, 
+           position = &quot;dodge&quot;,
+           width = 0.5) +
+  facet_wrap(~candidate) +
+  scale_fill_manual(values = c(&quot;orangered&quot;, &quot;dodgerblue2&quot;)) +
+  labs(x = &quot;Sentiment&quot;, y = &quot;&quot;,
+       title = &quot;Anteil der Valenz in den Tweets&quot;,
+       subtitle = &quot;der jeweiligen Kandidaten&quot;) +
+  scale_y_continuous(labels = scales::percent)</code></pre>
+<p><img src="/post/2020-09-10-twitter-analyse-textanalyse-der-tweets-der-kandidaten-um-das-amt-des-pr%C3%A4sidenten-der-usa.de_files/figure-html/unnamed-chunk-34-1.png" width="672" /></p>
+<p>Die Grafik zeigt, dass Bidens Tweets gemäß dem NRC Lexikon als deutlich positiver einzuordnen sind als die Tweets des Präsidenten.</p>
+</div>
+</div>
+<div id="zusammenfassung" class="section level2">
+<h2>Zusammenfassung</h2>
+<ul>
+<li>Wir haben die Twitterhäufigkeit untersucht und festgestellt, dass Donald Trump häufiger twittert und deutlich häufiger retweetet als Joe Biden.</li>
+<li>Wir habe gesehen, dass Donald Trump deutlich mehr Follower hat und seine Tweets häufiger geretweetet werden.</li>
+<li>Wir haben die Worte visualisiert, die die Kandidaten am häufigsten verwenden.</li>
+<li>Es ist aufgefallen, dass Biden deutlich häufiger den Namen seines Kontrahenten verwendet als umgekehrt.</li>
+<li>Eine Sentiment Analyse ergab, dass Bidens Tweets insgesamt “positiver” sind als die von Trump.</li>
+</ul>
+</div>
+
+    </div>
+
+    
+
+
+
+
+
+
+<div class="article-tags">
+  
+  <a class="badge badge-light" href="/tag/twitter/">Twitter</a>
+  
+  <a class="badge badge-light" href="/tag/textanalyse/">Textanalyse</a>
+  
+  <a class="badge badge-light" href="/tag/lda/">LDA</a>
+  
+  <a class="badge badge-light" href="/tag/topic-modeling/">Topic Modeling</a>
+  
+  <a class="badge badge-light" href="/tag/word-cloud/">Word Cloud</a>
+  
+</div>
+
+
+
+<div class="share-box" aria-hidden="true">
+  <ul class="share">
+    
+      
+      
+      
+        
+      
+      
+      
+      <li>
+        <a href="https://twitter.com/intent/tweet?url=/post/twitter-analyse-textanalyse-der-tweets-der-kandidaten-um-das-amt-des-prasidenten-der-usa/&amp;text=Twitter%20Analyse:%20Textanalyse%20der%20Tweets%20der%20Kandidaten%20um%20das%20Amt%20des%20Pr%c3%a4sidenten%20der%20USA" target="_blank" rel="noopener" class="share-btn-twitter">
+          <i class="fab fa-twitter"></i>
+        </a>
+      </li>
+    
+      
+      
+      
+        
+      
+      
+      
+      <li>
+        <a href="https://www.facebook.com/sharer.php?u=/post/twitter-analyse-textanalyse-der-tweets-der-kandidaten-um-das-amt-des-prasidenten-der-usa/&amp;t=Twitter%20Analyse:%20Textanalyse%20der%20Tweets%20der%20Kandidaten%20um%20das%20Amt%20des%20Pr%c3%a4sidenten%20der%20USA" target="_blank" rel="noopener" class="share-btn-facebook">
+          <i class="fab fa-facebook"></i>
+        </a>
+      </li>
+    
+      
+      
+      
+        
+      
+      
+      
+      <li>
+        <a href="mailto:?subject=Twitter%20Analyse:%20Textanalyse%20der%20Tweets%20der%20Kandidaten%20um%20das%20Amt%20des%20Pr%c3%a4sidenten%20der%20USA&amp;body=/post/twitter-analyse-textanalyse-der-tweets-der-kandidaten-um-das-amt-des-prasidenten-der-usa/" target="_blank" rel="noopener" class="share-btn-email">
+          <i class="fas fa-envelope"></i>
+        </a>
+      </li>
+    
+      
+      
+      
+        
+      
+      
+      
+      <li>
+        <a href="https://www.linkedin.com/shareArticle?url=/post/twitter-analyse-textanalyse-der-tweets-der-kandidaten-um-das-amt-des-prasidenten-der-usa/&amp;title=Twitter%20Analyse:%20Textanalyse%20der%20Tweets%20der%20Kandidaten%20um%20das%20Amt%20des%20Pr%c3%a4sidenten%20der%20USA" target="_blank" rel="noopener" class="share-btn-linkedin">
+          <i class="fab fa-linkedin-in"></i>
+        </a>
+      </li>
+    
+      
+      
+      
+        
+      
+      
+      
+      <li>
+        <a href="whatsapp://send?text=Twitter%20Analyse:%20Textanalyse%20der%20Tweets%20der%20Kandidaten%20um%20das%20Amt%20des%20Pr%c3%a4sidenten%20der%20USA%20/post/twitter-analyse-textanalyse-der-tweets-der-kandidaten-um-das-amt-des-prasidenten-der-usa/" target="_blank" rel="noopener" class="share-btn-whatsapp">
+          <i class="fab fa-whatsapp"></i>
+        </a>
+      </li>
+    
+      
+      
+      
+        
+      
+      
+      
+      <li>
+        <a href="https://service.weibo.com/share/share.php?url=/post/twitter-analyse-textanalyse-der-tweets-der-kandidaten-um-das-amt-des-prasidenten-der-usa/&amp;title=Twitter%20Analyse:%20Textanalyse%20der%20Tweets%20der%20Kandidaten%20um%20das%20Amt%20des%20Pr%c3%a4sidenten%20der%20USA" target="_blank" rel="noopener" class="share-btn-weibo">
+          <i class="fab fa-weibo"></i>
+        </a>
+      </li>
+    
+  </ul>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+  
+    
+    
+    
+      
+    
+    
+    
+    <div class="media author-card content-widget-hr">
+      
+        
+        <img class="avatar mr-3 avatar-circle" src="/author/nicolas-mollier/avatar_hua96a9129eb40319c6af4aa5dcdac3568_168993_270x270_fill_q90_lanczos_center.jpg" alt="Nicolas Mollier">
+      
+
+      <div class="media-body">
+        <h5 class="card-title"><a href="/">Nicolas Mollier</a></h5>
+        <h6 class="card-subtitle">Master Student in Data Science</h6>
+        <p class="card-text">My research interests include distributed robotics, mobile computing and programmable matter.</p>
+        <ul class="network-icon" aria-hidden="true">
+  
+    
+    
+    
+      
+    
+    
+    
+    
+    
+      
+    
+    <li>
+      <a href="/#contact" >
+        <i class="fas fa-envelope"></i>
+      </a>
+    </li>
+  
+    
+    
+    
+    
+    
+    
+    
+      
+    
+    <li>
+      <a href="https://scholar.google.co.uk/citations?user=sIwtMXoAAAAJ" target="_blank" rel="noopener">
+        <i class="ai ai-google-scholar"></i>
+      </a>
+    </li>
+  
+    
+    
+    
+      
+    
+    
+    
+    
+    
+      
+    
+    <li>
+      <a href="https://github.com/nicolasmollier" target="_blank" rel="noopener">
+        <i class="fab fa-github"></i>
+      </a>
+    </li>
+  
+    
+    
+    
+      
+    
+    
+    
+    
+    
+      
+    
+    <li>
+      <a href="https://www.instagram.com/nicolas.mollier/" target="_blank" rel="noopener">
+        <i class="fab fa-instagram"></i>
+      </a>
+    </li>
+  
+</ul>
+
+      </div>
+    </div>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+  </div>
+</article>
+
+      
+
+    
+    
+    
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js" integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=" crossorigin="anonymous"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.imagesloaded/4.1.4/imagesloaded.pkgd.min.js" integrity="sha256-lqvxZrPLtfffUl2G/e7szqSvPBILGbwmsGE1MKlOi0Q=" crossorigin="anonymous"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.isotope/3.0.6/isotope.pkgd.min.js" integrity="sha256-CBrpuqrMhXwcLLUd5tvQ4euBHCdh7wGlDfNz8vbu/iI=" crossorigin="anonymous"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.js" integrity="sha256-yt2kYMy0w8AbtF89WXb2P1rfjcP/HTHLT7097U8Y5b8=" crossorigin="anonymous"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/instant.page/5.1.0/instantpage.min.js" integrity="sha512-1+qUtKoh9XZW7j+6LhRMAyOrgSQKenQ4mluTR+cvxXjP1Z54RxZuzstR/H9kgPXQsVB8IW7DMDFUJpzLjvhGSQ==" crossorigin="anonymous"></script>
+
+      
+
+      
+        
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.2/highlight.min.js" integrity="sha512-7t8APmYpzEsZP7CYoA7RfMPV9Bb+PJHa9x2WiUnDXZx3XHveuyWUtvNOexhkierl5flZ3tr92dP1mMS+SGlD+A==" crossorigin="anonymous"></script>
+        
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.2/languages/r.min.js"></script>
+        
+      
+
+    
+
+    
+    
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.5.1/leaflet.js" integrity="sha256-EErZamuLefUnbMBQbsEqu1USa+btR2oIlCpBJbyD4/g=" crossorigin="anonymous"></script>
+    
+
+    
+    
+    <script>const code_highlighting = true;</script>
+    
+
+    
+    
+    <script>const isSiteThemeDark = false;</script>
+    
+
+    
+    
+    
+    
+    
+    
+    <script>
+      const search_config = {"indexURI":"/index.json","minLength":1,"threshold":0.3};
+      const i18n = {"no_results":"Nichts gefunden","placeholder":"Suche...","results":"Suchergebnisse"};
+      const content_type = {
+        'post': "Blog",
+        'project': "Projekte",
+        'publication' : "Publikationen",
+        'talk' : "Vorträge",
+        'slides' : "Folien"
+        };
+    </script>
+    
+
+    
+    
+
+    
+    
+    <script id="search-hit-fuse-template" type="text/x-template">
+      <div class="search-hit" id="summary-{{key}}">
+      <div class="search-hit-content">
+        <div class="search-hit-name">
+          <a href="{{relpermalink}}">{{title}}</a>
+          <div class="article-metadata search-hit-type">{{type}}</div>
+          <p class="search-hit-description">{{snippet}}</p>
+        </div>
+      </div>
+      </div>
+    </script>
+    
+
+    
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/3.2.1/fuse.min.js" integrity="sha256-VzgmKYmhsGNNN4Ph1kMW+BjoYJM2jV5i4IlFoeZA9XI=" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mark.js/8.11.1/jquery.mark.min.js" integrity="sha256-4HLtjeVgH0eIB3aZ9mLYF6E8oU5chNdjU6p6rrXpl9U=" crossorigin="anonymous"></script>
+    
+
+    
+    
+
+    
+    
+
+    
+    
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+      
+    
+    
+    
+    
+    <script src="/js/academic.min.3b2b658c61ebd725bd5fc606c89fe44c.js"></script>
+
+    
+
+
+
+
+
+
+  
+  
+  <div class="container">
+    <footer class="site-footer">
+  
+  <p class="powered-by">
+    
+      <a href="/privacy/">Privacy Policy</a>
+    
+    
+       &middot; 
+      <a href="/terms/">Terms</a>
+    
+  </p>
+  
+
+  <p class="powered-by">
+    
+  </p>
+
+  
+  
+
+
+
+
+
+
+  <p class="powered-by">
+    
+    Published with
+    <a href="https://sourcethemes.com/academic/" target="_blank" rel="noopener">Academic Website Builder</a>
+    
+
+    
+    <span class="float-right" aria-hidden="true">
+      <a href="#" class="back-to-top">
+        <span class="button_icon">
+          <i class="fas fa-chevron-up fa-2x"></i>
+        </span>
+      </a>
+    </span>
+    
+  </p>
+</footer>
+
+  </div>
+  
+
+  
+<div id="modal" class="modal fade" role="dialog">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Zitieren</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <pre><code class="tex hljs"></code></pre>
+      </div>
+      <div class="modal-footer">
+        <a class="btn btn-outline-primary my-1 js-copy-cite" href="#" target="_blank">
+          <i class="fas fa-copy"></i> Kopie
+        </a>
+        <a class="btn btn-outline-primary my-1 js-download-cite" href="#" target="_blank">
+          <i class="fas fa-download"></i> Download
+        </a>
+        <div id="modal-error"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

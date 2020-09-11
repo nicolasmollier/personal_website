@@ -18,12 +18,47 @@
   </url>
   
   <url>
-    <loc>/tag/hyperparametertuning/</loc>
-    <lastmod>2020-09-02T16:25:09+02:00</lastmod>
+    <loc>/tag/lda/</loc>
+    <lastmod>2020-09-10T10:18:33+02:00</lastmod>
   </url>
   
   <url>
     <loc>/post/</loc>
+    <lastmod>2020-09-10T10:18:33+02:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tags/</loc>
+    <lastmod>2020-09-10T10:18:33+02:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tag/textanalyse/</loc>
+    <lastmod>2020-09-10T10:18:33+02:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tag/topic-modeling/</loc>
+    <lastmod>2020-09-10T10:18:33+02:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tag/twitter/</loc>
+    <lastmod>2020-09-10T10:18:33+02:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/post/twitter-analyse-textanalyse-der-tweets-der-kandidaten-um-das-amt-des-prasidenten-der-usa/</loc>
+    <lastmod>2020-09-10T10:18:33+02:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tag/word-cloud/</loc>
+    <lastmod>2020-09-10T10:18:33+02:00</lastmod>
+  </url>
+  
+  <url>
+    <loc>/tag/hyperparametertuning/</loc>
     <lastmod>2020-09-02T16:25:09+02:00</lastmod>
   </url>
   
@@ -34,11 +69,6 @@
   
   <url>
     <loc>/post/random-forest-hyperparametertuning-mit-tidymodels-im-rahmen-der-kaggle-machine-learning-competition-titanic/</loc>
-    <lastmod>2020-09-02T16:25:09+02:00</lastmod>
-  </url>
-  
-  <url>
-    <loc>/tags/</loc>
     <lastmod>2020-09-02T16:25:09+02:00</lastmod>
   </url>
   

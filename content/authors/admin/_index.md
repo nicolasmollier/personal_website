@@ -12,6 +12,7 @@ education:
     year: 2020
 email: nicolas.mollier@gmx.de
 interests:
+- Predictive Modeling
 - Statistik
 - Machine Learning
 - Marketing Analytics

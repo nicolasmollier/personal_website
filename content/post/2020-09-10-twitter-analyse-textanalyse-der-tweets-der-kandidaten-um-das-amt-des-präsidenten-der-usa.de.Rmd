@@ -1,0 +1,690 @@
+---
+title: 'Twitter Analyse: Textanalyse der Tweets der Kandidaten um das Amt des Präsidenten
+  der USA'
+author: Nicolas Mollier
+date: '2020-09-10'
+slug: twitter-analyse-textanalyse-der-tweets-der-kandidaten-um-das-amt-des-präsidenten-der-usa
+categories: []
+tags:
+  - Twitter
+  - Textanalyse
+  - LDA
+  - Topic Modeling
+  - Word Cloud
+subtitle: ''
+summary: ''
+authors: []
+lastmod: '2020-09-10T10:18:33+02:00'
+featured: no
+image:
+  caption: ''
+  focal_point: ''
+  preview_only: no
+projects: []
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+
+In dieser Analyse geht es darum die aktuellsten Tweets der Präsidentschaftskandidaten der USA von Twitter zu "scrapen", die am häufigsten verwendeten Worte zu visualieren und eine inhaltliche Analyse der Tweets mittels Topic Modeling und Sentiment Analysis durchzuführen.
+
+
+## Packages
+
+```{r Packages}
+library(tidyverse)
+library(lubridate)
+library(rtweet)
+library(httpuv)
+library(janitor)
+library(qdapRegex)
+library(tm)
+library(qdap)
+library(topicmodels)
+library(syuzhet)
+```
+
+## Scrape the Data from Twitter
+
+```{r}
+n_tweets <- 3000
+```
+
+Als erstes laden wir die letzten `r n_tweets` Tweets der beiden Präsidentschaftskandidaten. Dazu nutzen wir die Pakete *rtweet* und *httpuv*, um über das Twitter API Zugriff auf die Tweets und die Profilinformationen zu erhalten. 
+
+```{r Get the Data}
+influence_canidates_df <- lookup_users(c("realDonaldTrump", "JoeBiden"))
+
+trump_timeline_list <- list()
+max_id <- NULL
+
+for(i in 1:10){
+  trump_timeline_list[[i]] <- get_timeline(user = "realDonaldTrump", 
+                                           n = n_tweets, 
+                                           max_id = max_id)
+  max_id <- min(trump_timeline_list[[i]]$status_id)
+}
+
+trump_timeline <- bind_rows(trump_timeline_list) %>% 
+  distinct(status_id, .keep_all = TRUE)
+
+n_tweets <- nrow(trump_timeline)
+biden_timeline <- get_timeline(user = "JoeBiden", n = n_tweets)
+```
+
+Die Funktion *get_timeline()* funktioniert bei Joe Biden sehr gut. Bei Donald Trump liefert sie jedoch stets weniger als die angefragte Anzahl an Tweets. Zudem schwankt die Anzahl der Tweets sehr. Das ist der Grund. Das ist der Grund, warum im Fall von Donald Trump die Konstruktion mit einer for-Schleife gewählt wurde. Sie versucht, nach und nach die noch nicht erhaltenen Tweets zu laden und anschließend alle erhaltenen Tweets in einem Datensatz *trump_timeline* zu vereinigen. So wird die Anzahl der erhaltenen Tweets zwar von nur einigen Hundert auf etwa 1500 erhöht. Die geforderte Anzahl von `r n_tweets` wird aber dennoch nicht erreicht. Für dieses Problem habe ich noch keine Lösung gefunden.
+
+## Influence of Candidates
+
+Bevor wir mit der Analyse der Tweets beginnen, werfen wir einen kurzen Blick darauf, welcher der Kandidaten die meisten Follower hat.
+
+```{r}
+n_followers <- influence_canidates_df %>% 
+  select(screen_name, followers_count) %>% 
+  arrange(desc(followers_count)) 
+```
+
+```{r}
+n_followers_trump <- n_followers %>% 
+  filter(screen_name == "realDonaldTrump") %>% 
+  select(followers_count) %>% 
+  as_vector()
+
+n_followers_biden <- n_followers %>% 
+  filter(screen_name == "JoeBiden") %>% 
+  select(followers_count) %>% 
+  as_vector()
+
+more_foll <- (n_followers_trump / n_followers_biden) %>% 
+  round(digits = 0)
+```
+
+Donald Trump hat mit `r n_followers_trump` rund `r paste(more_foll, "mal", sep = "-")` so viele Follower wie Joe Biden.
+
+## Twitter Frequenz
+
+Als nächstes betrachten wir, welcher der beiden Kandidaten pro Tag mehr Tweets absetzt. Da wir die Anzahl an Tweets pro Tag betrachten möchten, erstellen wir eine neue Variable *date*, die - anders als die Variable *created_at* - nicht mehr die genaue Uhrzeit des Posts enthält.
+
+```{r}
+trump_timeline <- trump_timeline %>% 
+  mutate(date = as.Date(created_at)) 
+
+biden_timeline <- biden_timeline %>% 
+  mutate(date = as.Date(created_at))
+```
+
+Anschließend gruppieren wir den jeweiligen Datensatz gemäß der Variablen *date*, zählen die Tweets und speichern die Werte als *trump_tweets_per_day* und *biden_tweets_per_day*. Wir vereinigen die beiden Datensätze über einen Inner Join. So erhalten wir einen Datensatz mit den drei Variablen *date*, *n_trump* und *n_biden*. Um die Daten visualisieren zu können, überführen wir den Datensatz mit der Funktion *pivot_longer* in ein *tidy format*, bei dem jede Spalte einer Variablen und jede Zeile einer Observation entspricht. Anschließend erstellen wir mit *ggplot* eine Grafik, die die Anzahl der täglichen Tweets je Kandidat über den betrachteten Zeitraum gegenüberstellt.
+
+```{r fig.height=3}
+trump_tweets_per_day <- trump_timeline %>% 
+  count(date) %>% 
+  arrange(desc(n))
+
+biden_tweets_per_day <- biden_timeline %>% 
+  count(date) %>% 
+  arrange(desc(n))
+
+trump_tweets_per_day %>% 
+  inner_join(biden_tweets_per_day, 
+             by = "date",
+             suffix = c("_trump", "_biden")) %>% 
+  pivot_longer(n_trump:n_biden,
+               names_to = "candidate",
+               values_to = "n_tweets") %>% 
+  mutate(candidate = str_remove_all(candidate, "n_")) %>% 
+  mutate(candidate = factor(candidate, levels = c("trump", "biden"))) %>% 
+  ggplot(aes(date, n_tweets, color = candidate)) +
+  geom_line(size = 0.7) +
+  labs(x = "Date", y = "Number of Tweets", 
+       title = "Vergleich der Twitteraktivität",
+       subtitle = "der Präsidentschaftskandidaten") +
+  scale_color_manual(values = c("orangered", "dodgerblue2"))
+```
+
+Dabei fällt auf, dass Donald Trump deutlich häufiger Tweets absetzt als Joe Biden. Schauen wir uns, an was der Grund dafür sein könnte. 
+
+```{r}
+prop_retweet <- trump_timeline %>% 
+  bind_rows(biden_timeline) %>% 
+  group_by(screen_name) %>% 
+  summarize(prop_retweet = mean(is_retweet)) 
+
+prop_retweet %>% 
+  knitr::kable()
+
+prop_retweet_trump <- prop_retweet %>% 
+  filter(screen_name == "realDonaldTrump") %>% 
+  select(prop_retweet) %>% 
+  as_vector() %>% 
+  scales::percent()
+
+prop_retweet_biden <- prop_retweet %>% 
+  filter(screen_name == "JoeBiden") %>% 
+  select(prop_retweet) %>% 
+  as_vector() %>% 
+  scales::percent()
+```
+
+Ein Grund für die deutliche höhere Twitter Frequenz von Donald Trump ist der deutlich höhere Anteil an Retweets bei ihm. Während der Anteil an Retweets an den betrachteten Tweets von Joe Biden nur etwa `r prop_retweet_biden` betragen, bestehen die Tweets von Donald Trump mit rund `r prop_retweet_trump` fast zur Hälfte aus Retweets. Betrachetn wir, wie sich der Vergleich der Anzahl an täglichen Tweets verändert, wenn wir Retweets zuvor entfernen.
+
+```{r}
+trump_timeline <- trump_timeline %>% 
+  filter(!is_retweet)
+
+biden_timeline <- biden_timeline %>% 
+  filter(!is_retweet)
+```
+
+Auch ohne Retweets twittert Trump im Schnitt häufiger als Biden, allerdings ist der Unterschied deutlich geringer als zuvor.
+
+```{r fig.height=3}
+trump_tweets_per_day <- trump_timeline %>% 
+  count(date) %>% 
+  arrange(desc(n))
+
+biden_tweets_per_day <- biden_timeline %>% 
+  count(date) %>% 
+  arrange(desc(n))
+
+trump_tweets_per_day %>% 
+  inner_join(biden_tweets_per_day, 
+             by = "date",
+             suffix = c("_trump", "_biden")) %>% 
+  pivot_longer(n_trump:n_biden,
+               names_to = "candidate",
+               values_to = "n_tweets") %>% 
+  mutate(candidate = str_remove_all(candidate, "n_")) %>% 
+  mutate(candidate = factor(candidate, levels = c("trump", "biden"))) %>%
+  ggplot(aes(date, n_tweets, color = candidate)) +
+  geom_line(size = 0.7) +
+  labs(x = "Date", y = "Number of Tweets", 
+       title = "Vergleich der Twitteraktivität - ohne Retweets",
+       subtitle = "der Präsidentschaftskandidaten") +
+  scale_color_manual(values = c("orangered", "dodgerblue2"))
+```
+
+## Reaktionen auf die Tweets der Kandidaten
+
+Nun gehen wir der Frage nach, wie häufig ein Retweet der jeweiligen Person retweeted wird bzw. wie viele Retweets die Kandidaten im Durchschnitt pro Tag hervorrufen.
+
+```{r}
+mean_retweet_count_trump <- trump_timeline %>% 
+  summarise(mean_retweet_count = mean(retweet_count)) %>% 
+  as_vector() %>% 
+  round()
+mean_retweet_count_biden <- biden_timeline %>% 
+  summarise(mean_retweet_count = mean(retweet_count)) %>% 
+  as_vector() %>% 
+  round()
+prop_diff_retweets <- (1 - mean_retweet_count_biden / mean_retweet_count_trump) 
+```
+
+Donald Trumps Tweets erzielen im Durchschnitt `r mean_retweet_count_trump`, die von Joe Biden `r mean_retweet_count_biden` und damit um etwa `r scales::percent(prop_diff_retweets)` weniger. 
+
+Betrachten wir die durchschnittliche Anzahl an Retweets, die die Tweets der Kandidaten pro Tag auslösen. Nachdem wir für beide Kandidaten die durchschnittlichen täglichen Retweets berstimmt haben, verbinden wir beide Datensätze per Inner Join und bringen den vereinigten Datensatz in ein *tidy format*, um die Zeitreihe anschließend zu grafisch darzustellen.
+
+```{r fig.height = 3}
+trump_mean_retweet_per_day <- trump_timeline %>% 
+  select(screen_name, date, retweet_count) %>% 
+  group_by(date) %>% 
+  summarize(retweet_count = mean(retweet_count))
+
+
+biden_mean_retweet_per_day <- biden_timeline %>% 
+  select(screen_name, date, retweet_count) %>% 
+  group_by(date) %>% 
+  summarize(retweet_count = mean(retweet_count))
+
+mean_retweet_comparison <- trump_mean_retweet_per_day %>% 
+  inner_join(biden_mean_retweet_per_day, 
+             by = "date",
+             suffix = c("_trump", "_biden")) %>% 
+  pivot_longer(retweet_count_trump:retweet_count_biden,
+               names_to = "candidate",
+               values_to = "retweet_count") %>% 
+  mutate(candidate = str_remove_all(string = candidate, 
+                                    pattern = "retweet_count_")) %>% 
+  mutate(candidate = factor(candidate, levels = c("trump", "biden")))
+  
+
+mean_retweet_comparison %>% 
+  ggplot(aes(date, retweet_count, color = candidate)) +
+  geom_line(size = 0.7) +
+  labs(x = "Date", y = "", 
+       title = "Durchschnittliche Anzahl an Retweets",
+       subtitle = "die ein Tweet der Kandidaten auslöst") +
+  scale_color_manual(values = c("orangered", "dodgerblue2"))
+
+```
+
+In der Regel werden die Tweets des Präsidenten öfters retweetet als die von Joe Biden.
+Allerdings geht aus der Grafik hervor, dass Joe Biden an einem bestimmten Tag ungewöhnlich viele Retweets erzielte. 
+
+```{r Wann genau und warum war die Reaktion auf Bidens Tweets an einem Tag so hoch?}
+mean_retweet_comparison %>%
+  filter(candidate == "biden") %>% 
+  arrange(desc(retweet_count))
+
+biden_timeline %>% 
+  filter(date == "2020-08-11") %>% 
+  select(date, text, retweet_count) 
+```
+
+Es stellt sich heraus, dass es sich bei diesem Tag um den 11.08.2020 handelt, den Tag, an dem Biden Kamala Harris als seine Kandidatin für das Amt des Vizepräsidenten bekanntgab.
+
+```{r}
+trump_higher_retweet <- mean_retweet_comparison %>% 
+  pivot_wider(names_from = candidate,
+              values_from = retweet_count,
+              names_prefix = "n_") %>% 
+  mutate(trump_higher = n_trump > n_biden) %>% 
+  select_if(is.logical) %>% 
+  colMeans() %>% 
+  scales::percent()
+```
+
+Insegesamt über den betrachteten Zeitraum erzielten die Tweets von Trump aber an `r trump_higher_retweet` der Tage mehr Retweets als die seines Herausforderers.
+
+## Populärste Tweets
+
+```{r}
+biden_timeline %>% 
+  filter(!is_retweet) %>% 
+  select(text, retweet_count) %>% 
+  arrange(desc(retweet_count)) %>% 
+  head(n = 10)
+
+trump_timeline %>% 
+  filter(!is_retweet) %>% 
+  select(text, retweet_count) %>% 
+  arrange(desc(retweet_count)) %>% 
+  head(n = 10)
+```
+
+## Analyse der Tweets: Text Analysis
+
+Bisher haben wir uns numerische Kennzahlen zu den Kandidaten angeschaut wie *Anzahl der Follower*, *Anzahl an Tweets pro Tag*, *Anzahl an Retweets pro Tweet* und einen ersten Blick auf die populärsten Tweets der Kandidaten geweorfen. Als nächstes wollen wir uns näher mit dem Inhalt der Tweets auseinandersetzen. Dabei betrachten wir häufig verwendete Worte der Kandidaten, bestimmen die Emotionen, die die Kandidaten in ihren Tweets ausdrücken und untersuchen, ob sich die Emotionen der populärsten Tweets von denen aller Tweets des jeweiligen Bewerbers unterscheiden. Zuvor müssen wir die Daten aber für die Textanalyse vorbereiten.
+
+### Preparation
+
+Als erstes speichern wir die Tweets der Kandidaten jeweils in den Vektoren *trump_text* bzw. *biden_text* und entfernen Links und Sonderzeichen aus den Tweets.
+
+```{r}
+trump_text <- trump_timeline$text
+biden_text <- biden_timeline$text
+
+trump_text_clean <- trump_text %>% 
+  rm_twitter_url() %>% 
+  str_replace_all("[^A-Za-z]", " ") 
+
+biden_text_clean <- biden_text %>% 
+  rm_twitter_url() %>% 
+  str_replace_all("[^A-Za-z]", " ") 
+  
+```
+
+Anschließend werden die Textvektoren in sogenannte *Corpora* umgewandelt.
+
+```{r}
+trump_corpus <- trump_text_clean %>% 
+  VectorSource() %>% 
+  Corpus()
+
+biden_corpus <- biden_text_clean %>% 
+  VectorSource() %>% 
+  Corpus()
+
+```
+
+Wir wandeln alle in den Tweets verwendeten Großbuchstaben in Kleinbuchstaben um. Dadurch wird verhindert, dass z.B. die Worte "Big" und "big" als zwei unterschiedliche Worte gewertet werden.
+
+```{r}
+trump_corpus <- trump_corpus %>% 
+  tm_map(str_to_lower)
+
+biden_corpus <- biden_corpus %>% 
+  tm_map(str_to_lower)
+```
+
+Die Tweets enthalten zu einem großen Teil sogenannte Stopwords wie z.B. "and" und "have".
+
+```{r}
+stopwords("en")
+```
+
+Diese Worte bieten für sich alleine betrachtet für die inhaltliche Analyse keinen Mehrwert und trüben stattdessen den Blick auf die wesentlichen, individuellen Worte der Kandidaten. Deshalb werden zunächst die gängigsten Stopwords entfernt.
+
+```{r}
+trump_corpus <- trump_corpus %>% 
+  tm_map(removeWords, stopwords("en"))
+
+biden_corpus <- biden_corpus %>% 
+  tm_map(removeWords, stopwords("en"))
+```
+
+Nach Entfernung der Sonderzeichen, der Umformung in Kleinbuchstaben und der Entfernung der Stopwords, sehen die einzelnen Tweets etwa so aus, wie diese zwei Beispiele:
+
+```{r}
+trump_corpus[[3]]$content
+biden_corpus[[3]]$content
+```
+
+
+### Häufig verwendete Begriffe
+
+Als nächstes schauen wir, welche Worte die Kandidaten am häufigsten verwenden.
+
+```{r}
+term_count_trump <- freq_terms(trump_corpus, 50)
+term_count_biden <- freq_terms(biden_corpus, 50)
+
+head(term_count_trump, 20)
+head(term_count_biden, 20)
+```
+
+Es ist erkennbar, dass die Tweets immer noch Worte (und Buchstaben) enthalten, die für die inhaltliche Auswertung der Tweets störend sind. Aus diesem Grund werden weitere Stopwords entfernt. Die Auswahl, welche weiteren Worte zu entfernen sind, ist natürlich subjektiv. Dieser Subjektivität sollte man sich bewusst sein, um einem möglichen Bias bei der Auswahl entgegenwirken zu können.
+
+```{r}
+custom_stop <- c("will", "amp", "s", "t", "just", "now", "new", "never", 
+                 "complete", "total", "m", "like", "even", "re", "ll", 
+                 "ve", "just", "let", "can", "need", "every", "make", 
+                 "one", "get", "take", "going", "ob", "isn", "also", 
+                 "got", "vets", "made", "across", "second", "first", 
+                 "many", "want", "day", "time", "today", "much", "done", 
+                 "way", "back", "years", "must", "nothing", "ever", 
+                 "ensure", "know", "really")
+
+trump_corpus <- trump_corpus %>% 
+  tm_map(removeWords, custom_stop)
+
+biden_corpus <- biden_corpus %>% 
+  tm_map(removeWords, custom_stop)
+```
+
+```{r}
+n_freq_words <- 15
+```
+
+Betrachten wir nun einen *Bar Plot* der `r n_freq_words` häufigsten Wörter, die Joe Biden und Donald Trump jeweils in ihren Tweets verwenden.
+
+```{r}
+term_count_clean_trump <- freq_terms(trump_corpus, n_freq_words)
+
+term_count_clean_trump %>% 
+  ggplot(aes(reorder(WORD, FREQ), FREQ)) +
+  geom_bar(stat = "identity") +
+  labs(x = "", y = "Häufigkeit", 
+       title = "Am häufigsten von Donald Trump verwendete Worte",
+       subtitle = "nach Entfernung von Stopwords") +
+  coord_flip()
+
+
+term_count_clean_biden <- freq_terms(biden_corpus, n_freq_words)
+
+term_count_clean_biden %>% 
+  ggplot(aes(reorder(WORD, FREQ), FREQ)) +
+  geom_bar(stat = "identity") +
+  labs(x = "", y = "Häufigkeit", 
+       title = "Am häufigsten von Joe Biden verwendete Worte",
+       subtitle = "nach Entfernung von Stopwords") +
+  coord_flip()
+```
+
+Alternativ können wir die am häufigsten verwendeten Wörter noch kompakter in Form einer *Word Cloud* darstellen, bei der die Größe des Wortes proportional zu der Häufigkeit seiner Verwendung steht.
+
+```{r}
+trump_corpus %>%
+  wordcloud::wordcloud(max.words = 70, 
+                       colors = brewer.pal(6, "Dark2"), 
+                       scale = c(3, 0.5), 
+                       random.order = FALSE)
+
+biden_corpus %>%
+  wordcloud::wordcloud(max.words = 70, 
+                       colors = brewer.pal(6, "Dark2"), 
+                       scale = c(3, 0.5), 
+                       random.order = FALSE)
+```
+
+Trump verwendet am häufigsten das Wort "great". Bei Biden sind es die beiden Worte "president" und "trump", die am häufigsten verwendet werden. Es scheint so, als würde sich Joe Biden in seinen Tweets vor allem an Donald Trump abarbeiten, während umgekehrt Donald Trump seinen Herausforderer deutlich seltener in seinen Tweets erwähnt.
+
+```{r}
+rank_crisis <- which(term_count_biden$WORD == "crisis")
+```
+
+Donald Trump verwendet deutlich häufiger positive Adjektive wie "great" und "good". Das kann darin begründet liegen, dass Trump als Amtsinhaber bestrebt ist, seine bisherige Politik als Erfolg zu verkaufen, während Joe Biden bestrebt sein wird, eine gegenteilige Darstellung zu verbreiten. So ist das Wort "crisis" bei Joe Biden auf Rang `r rank_crisis` der meistverwendeten Worte, bei Donald Trump kommt es nicht einmal unter den 1000 meistverwendeten Worten.
+
+```{r}
+freq_terms(trump_corpus, 1000) %>% 
+  filter(WORD == "crisis")
+```
+
+## Topic Modeling
+
+Nachdem wir bereits die am häufigsten verwendeten Wörter betrachtet haben, versuchen wir nun aus den verwendeten Worten und deren gemeinsamen Auftreten, Themen der Tweets zu identifizieren.
+
+### Preparation
+
+Zunächst müssen die Daten aber in ein für die *Topic Analysis* passendes Format gebracht werden.
+
+```{r}
+dtm_trump <- DocumentTermMatrix(trump_corpus)
+inspect(dtm_trump)
+
+row_totals_trump <- dtm_trump %>% 
+  apply(1, sum)
+
+dtm_trump <- dtm_trump[row_totals_trump > 0, ]
+
+
+dtm_biden <- DocumentTermMatrix(biden_corpus)
+inspect(dtm_biden)
+
+row_totals_biden <- dtm_biden %>% 
+  apply(1, sum)
+
+dtm_biden <- dtm_biden[row_totals_biden > 0, ]
+
+```
+
+
+### Modellierung
+
+Anschließend wird die Latent Dirichlet Allocation (LDA) durchgeführt, um Themenfelder in den Tweets zu erkennen.
+
+```{r}
+lda_5_trump <- LDA(dtm_trump, k = 6)
+lda_5_biden <- LDA(dtm_biden, k = 6)
+
+terms(lda_5_trump, 5)
+terms(lda_5_biden, 5)
+```
+
+
+## Sentiment Analysis
+
+Bei der Sentiment Analysis geht es darum, die Emotionen, die in den Tweets ausgedrückt werden, zu identifizieren.
+
+Zunächst muss der jeweilige *Corpus* in ein sogenanntes *Plain Text Document* umgewandelt werden. Anschließend werden die Tweets in den Vektoren *trump_sentiment_text* bzw. *biden_sentiment_text* gespeichert.
+
+```{r}
+trump_sentiment <- tm_map(trump_corpus, PlainTextDocument)
+trump_sentiment_text <- trump_sentiment[["content"]]$content
+
+biden_sentiment <- tm_map(biden_corpus, PlainTextDocument)
+biden_sentiment_text <- biden_sentiment[["content"]]$content
+```
+
+Mit der Funktion *get_nrc_sentiment* werden die in den Tweets verwendeten Worte gemäß dem *NRC sentiment dictionary* in 10 Kategorien klassifiziert.
+
+```{r}
+trump_sa <- get_nrc_sentiment(trump_sentiment_text)
+head(trump_sa)
+
+biden_sa <- get_nrc_sentiment(biden_sentiment_text)
+head(biden_sa)
+```
+
+Jede Zeile in den Datensätzen *trump_sa* und *biden_sa* entspricht einem Tweet. Für jeden Emotionstyp bzw. jede Valenz gibt es eine Spalte. Die Scores können dazu genutzt werden, zu veranschaulichen welchen Anteil die jeweilige Emotion bzw. das jeweilige Senntiment(positve vs. negative) in den betrachteten Tweets der Kandidaten hat.
+
+```{r fig.height=4, include = FALSE}
+
+trump_sa_score <- trump_sa %>% 
+  colSums() %>% 
+  data.frame(.) %>% 
+  rename("score" = ".") %>% 
+  bind_cols(sentiment = row.names(.))
+
+biden_sa_score <- biden_sa %>% 
+  colSums() %>% 
+  data.frame(.) %>% 
+  rename("score" = ".") %>% 
+  bind_cols(sentiment = row.names(.))
+
+sa_score_df <- trump_sa_score %>% 
+  inner_join(biden_sa_score, 
+             by = "sentiment",
+             suffix = c("_trump", "_biden")) %>% 
+  pivot_longer(c(score_trump, score_biden),
+               names_to = "candidate",
+               values_to = "score") %>% 
+  mutate(candidate = str_replace_all(string = candidate,
+                                     pattern = "score_",
+                                     replacement = "")) %>% 
+  mutate(candidate = factor(candidate, levels = c("trump", "biden"))) 
+
+# Hinweis auf unterschiedliche Skala der y-Achse !
+
+sa_score_df %>% 
+  filter(!(sentiment %in% c("positive", "negative"))) %>% 
+  ggplot(aes(x = fct_reorder(sentiment, desc(score)), 
+             y = score, fill = candidate)) +
+  geom_bar(stat = "identity") +
+  scale_fill_manual(values = c("orangered", "dodgerblue2")) +
+  facet_wrap(~candidate, scales = "free") +
+  coord_flip() +
+  labs(y = "Sentiment", x = "Score")
+
+sa_score_df %>% 
+  filter(sentiment %in% c("positive", "negative")) %>% 
+  ggplot(aes(x = fct_reorder(sentiment, desc(score)), y = score, fill = candidate)) +
+  geom_bar(stat = "identity", width = 0.5) +
+  scale_fill_manual(values = c("orangered", "dodgerblue2")) +
+  facet_wrap(~candidate, scales = "free") +
+  labs(y = "Sentiment", x = "Score")
+```
+
+
+### Anteil der jeweiligen Emotionen in den Tweets der Kandidaten
+
+Zunächst summieren wir die Scores für die 8 Emotionen spaltenweise auf. Die so erhaltenen Summen pro Emotion werden nun jeweils ins Verhältnis zu den gesamten Scores der 8 Emotionen gesetzt. Das machen wir für Trump und Biden.
+
+```{r}
+trump_sa_score_prop_emo <- trump_sa %>% 
+  select(1:8) %>% 
+  colSums() %>% 
+  prop.table() %>% 
+  data.frame(.) %>% 
+  rename("prop" = ".") %>% 
+  bind_cols(sentiment = row.names(.))
+
+biden_sa_score_prop_emo <- biden_sa %>% 
+  select(1:8) %>% 
+  colSums() %>% 
+  prop.table() %>% 
+  data.frame(.) %>% 
+  rename("prop" = ".") %>% 
+  bind_cols(sentiment = row.names(.))
+```
+
+Anschließend verbinden wir die Datensätze *trump_sa_score_prop_emo* und *biden_sa_score_prop_emo* per *Inner Join* und bringen die Daten in eine Form, die es uns ermöglicht, die Daten zu visualisieren.
+
+```{r}
+sa_score_prop_df <- trump_sa_score_prop_emo %>% 
+  inner_join(biden_sa_score_prop_emo,
+             by = "sentiment",
+             suffix = c("_trump", "_biden")) %>% 
+  pivot_longer(c(prop_trump, prop_biden),
+               names_to = "candidate",
+               values_to = "prop") %>% 
+  mutate(candidate = str_replace_all(string = candidate,
+                                     pattern = "prop_",
+                                     replacement = "")) %>% 
+  mutate(candidate = factor(candidate, levels = c("trump", "biden"))) 
+```
+
+Die nachfolgende Grafik gibt für jede der Emotionen an, wie hoch ihr Anteil an den Tweets des jeweiligen Kandidaten für die Präsidentschaft ist.
+
+```{r fig.height = 4}
+sa_score_prop_df %>% 
+  ggplot(aes(fct_reorder(sentiment, prop), prop, fill = candidate)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual(values = c("orangered", "dodgerblue2")) +
+  labs(x = "Sentiment", y = "",
+       title = "Anteil der Emotionen in den Tweets",
+       subtitle = "der jeweiligen Kandidaten") +
+  scale_y_continuous(labels = scales::percent)
+```
+
+Biden liegt insebesondere bei den Emotionen *trust* und *surprise* vor Trump, während Trump bei den Emotionen *disgust*, *sadness*, *anger* und *fear* vorne liegt. Bei *joy* und *anticipation* liegen beide etwa gleichauf.
+
+### Anteil der Positivität vs. Negativität
+
+Neben den 8 Emotionen liefert die Sentiment Analysis bei Nutzung des NRC Lexikons auch Scores für die Kategorien *Positiv* und *Negativ*. Für diese Kategorien wiederholen wir die Schritte, die wir bei der Untersuchung der Emotionen durchgeführt haben analog.
+
+```{r fig.height = 3}
+trump_sa_score_prop_pos <- trump_sa %>% 
+  select(negative, positive) %>%  # negative und positive statt der 8 Emotionen
+  colSums() %>% 
+  prop.table() %>% 
+  data.frame(.) %>% 
+  rename("prop" = ".") %>% 
+  bind_cols(sentiment = row.names(.))
+
+biden_sa_score_prop_pos <- biden_sa %>% 
+  select(negative, positive) %>%  # negative und positive statt der 8 Emotionen
+  colSums() %>% 
+  prop.table() %>% 
+  data.frame(.) %>% 
+  rename("prop" = ".") %>% 
+  bind_cols(sentiment = row.names(.))
+
+sa_score_prop_pos_df <- trump_sa_score_prop_pos %>% 
+  inner_join(biden_sa_score_prop_pos,
+             by = "sentiment",
+             suffix = c("_trump", "_biden")) %>% 
+  pivot_longer(c(prop_trump, prop_biden),
+               names_to = "candidate",
+               values_to = "prop") %>% 
+  mutate(candidate = str_replace_all(string = candidate,
+                                     pattern = "prop_",
+                                     replacement = "")) %>% 
+  mutate(candidate = factor(candidate, levels = c("trump", "biden"))) 
+
+
+sa_score_prop_pos_df %>% 
+  ggplot(aes(fct_reorder(sentiment, prop), prop, fill = candidate)) +
+  geom_bar(stat = "identity", 
+           position = "dodge",
+           width = 0.5) +
+  facet_wrap(~candidate) +
+  scale_fill_manual(values = c("orangered", "dodgerblue2")) +
+  labs(x = "Sentiment", y = "",
+       title = "Anteil der Valenz in den Tweets",
+       subtitle = "der jeweiligen Kandidaten") +
+  scale_y_continuous(labels = scales::percent)
+```
+
+Die Grafik zeigt, dass Bidens Tweets gemäß dem NRC Lexikon als deutlich positiver einzuordnen sind als die Tweets des Präsidenten. 
+
+## Zusammenfassung
+
+- Wir haben die Twitterhäufigkeit untersucht und festgestellt, dass Donald Trump häufiger twittert und deutlich häufiger retweetet als Joe Biden.
+- Wir habe gesehen, dass Donald Trump deutlich mehr Follower hat und seine Tweets häufiger geretweetet werden.
+- Wir haben die Worte visualisiert, die die Kandidaten am häufigsten verwenden.
+- Es ist aufgefallen, dass Biden deutlich häufiger den Namen seines Kontrahenten verwendet als umgekehrt.
+- Eine Sentiment Analyse ergab, dass Bidens Tweets insgesamt "positiver" sind als die von Trump.
+
