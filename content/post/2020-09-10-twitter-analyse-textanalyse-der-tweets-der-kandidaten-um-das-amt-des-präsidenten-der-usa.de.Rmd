@@ -75,7 +75,7 @@ n_tweets <- nrow(trump_timeline)
 biden_timeline <- get_timeline(user = "JoeBiden", n = n_tweets)
 ```
 
-Die Funktion *get_timeline()* funktioniert bei Joe Biden sehr gut. Bei Donald Trump liefert sie jedoch stets weniger als die angefragte Anzahl an Tweets. Zudem schwankt die Anzahl der Tweets sehr. Das ist der Grund. Das ist der Grund, warum im Fall von Donald Trump die Konstruktion mit einer for-Schleife gewählt wurde. Sie versucht, nach und nach die noch nicht erhaltenen Tweets zu laden und anschließend alle erhaltenen Tweets in einem Datensatz *trump_timeline* zu vereinigen. So wird die Anzahl der erhaltenen Tweets zwar von nur einigen Hundert auf etwa 1500 erhöht. Die geforderte Anzahl von `r n_tweets` wird aber dennoch nicht erreicht. Für dieses Problem habe ich noch keine Lösung gefunden.
+Die Funktion *get_timeline()* funktioniert bei Joe Biden sehr gut. Bei Donald Trump liefert sie jedoch stets weniger als die angefragte Anzahl an Tweets. Zudem schwankt die Anzahl der Tweets sehr. Das ist der Grund. Das ist der Grund, warum im Fall von Donald Trump die Konstruktion mit einer for-Schleife gewählt wurde. Sie versucht, nach und nach die noch nicht erhaltenen Tweets zu laden und anschließend alle erhaltenen Tweets in einem Datensatz *trump_timeline* zu vereinigen. So wird die Anzahl der erhaltenen Tweets erhöht. Die geforderte Anzahl von `r n_tweets` wird aber dennoch nicht erreicht. Für dieses Problem habe ich noch keine Lösung gefunden.
 
 ## Influence of Candidates
 
@@ -213,16 +213,14 @@ Nun gehen wir der Frage nach, wie häufig ein Retweet der jeweiligen Person retw
 ```{r}
 mean_retweet_count_trump <- trump_timeline %>% 
   summarise(mean_retweet_count = mean(retweet_count)) %>% 
-  as_vector() %>% 
-  round()
+  as_vector() 
 mean_retweet_count_biden <- biden_timeline %>% 
   summarise(mean_retweet_count = mean(retweet_count)) %>% 
-  as_vector() %>% 
-  round()
+  as_vector() 
 prop_diff_retweets <- (1 - mean_retweet_count_biden / mean_retweet_count_trump) 
 ```
 
-Donald Trumps Tweets erzielen im Durchschnitt `r mean_retweet_count_trump`, die von Joe Biden `r mean_retweet_count_biden` und damit um etwa `r scales::percent(prop_diff_retweets)` weniger. 
+Donald Trumps Tweets erzielen im Durchschnitt `r round(mean_retweet_count_trump)`, die von Joe Biden `r round(mean_retweet_count_biden)` und damit um etwa `r scales::percent(prop_diff_retweets)` weniger. 
 
 Betrachten wir die durchschnittliche Anzahl an Retweets, die die Tweets der Kandidaten pro Tag auslösen. Nachdem wir für beide Kandidaten die durchschnittlichen täglichen Retweets berstimmt haben, verbinden wir beide Datensätze per Inner Join und bringen den vereinigten Datensatz in ein *tidy format*, um die Zeitreihe anschließend zu grafisch darzustellen.
 
@@ -629,7 +627,7 @@ sa_score_prop_df %>%
   scale_y_continuous(labels = scales::percent)
 ```
 
-Biden liegt insebesondere bei den Emotionen *trust* und *surprise* vor Trump, während Trump bei den Emotionen *disgust*, *sadness*, *anger* und *fear* vorne liegt. Bei *joy* und *anticipation* liegen beide etwa gleichauf.
+Biden liegt insebesondere bei den Emotionen *trust* und *surprise* vor Trump, während Trump bei den Emotionen *disgust*, *sadness* und *anger* vorne liegt. 
 
 ### Anteil der Positivität vs. Negativität
 
