@@ -26,7 +26,15 @@ header:
 
 - [WOLLSCHLÄGER, Daniel. R kompakt: Der schnelle Einstieg in die Datenanalyse. Springer-Verlag, 2016.](https://www.amazon.de/kompakt-schnelle-Einstieg-Datenanalyse-Springer-Lehrbuch/dp/366249101X/ref=sr_1_1?__mk_de_DE=%C3%85M%C3%85%C5%BD%C3%95%C3%91&dchild=1&keywords=R+kompakt&qid=1597581465&sr=8-1)
 
+## Statistik
 
+- [WOOLDRIDGE, Jeffrey M. Introductory Econometrics: A Modern Approach, 6th edition. New York: South-Western College Publishing, 2015.](https://www.amazon.de/Introductory-Econometrics-Modern-Approach-Economics/dp/130527010X/ref=sr_1_2?__mk_de_DE=%C3%85M%C3%85%C5%BD%C3%95%C3%91&crid=38LIV92M7C8O2&dchild=1&keywords=econometrics+wooldridge&qid=1600280724&sprefix=econometrics+woo%2Caps%2C166&sr=8-2)
+
+- [TSAY, Ruey S. Analysis of financial time series, 3rd edition. John wiley & sons, 2010.](https://www.amazon.de/Analysis-Financial-Wiley-Probability-Statistics/dp/0470414359/ref=sr_1_1?__mk_de_DE=%C3%85M%C3%85%C5%BD%C3%95%C3%91&crid=3JI8RWCRVUVCD&dchild=1&keywords=analysis+of+financial+time+series&qid=1600281073&sprefix=analysis+of+finan%2Caps%2C164&sr=8-1)
+
+- [SCHIRA, Josef. Statistische Methoden der VWL und BWL: Theorie und Praxis. Pearson Deutschland GmbH, 2009.](https://www.amazon.de/Statistische-Methoden-VWL-BWL-Economic/dp/3868941177/ref=sr_1_4?__mk_de_DE=%C3%85M%C3%85%C5%BD%C3%95%C3%91&crid=17VZYPDX9JZKD&dchild=1&keywords=statistische+methoden+der+vwl+und+bwl&qid=1600280451&sprefix=statistische+me%2Caps%2C169&sr=8-4)
+
+- [HASSLER, Uwe. Statistik im Bachelor-Studium. Springer Fachmedien Wiesbaden, 2018.](https://www.amazon.de/Statistik-Bachelor-Studium-Wirtschaftswissenschaftler-Studienb%C3%BCcher-Wirtschaftsmathematik/dp/365820964X/ref=sr_1_1?__mk_de_DE=%C3%85M%C3%85%C5%BD%C3%95%C3%91&dchild=1&keywords=hassler+statistik&qid=1600280149&sr=8-1)
 
 ## Python
 
