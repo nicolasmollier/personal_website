@@ -32,6 +32,8 @@ rm(list = ls())
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+In this Analysis I combine geospatial data from the German Federal Agency for Cartography and Geodesy (see [here](https://gdz.bkg.bund.de/index.php/default/open-data/nuts-gebiete-1-250-000-stand-01-01-nuts250-01-01.html)) and unemployment data from the German Federal Statistical Office (see [here](https://www.regionalstatistik.de/genesis//online/data?operation=table&code=13211-02-05-4&levelindex=1&levelid=1598863731608#astructure)) in order to visualize unemployment across Germany on a district level in a chorpleth map. In [section 1][1. Geospatial data] and [section 2][2. Unemployment data] I read in the two data sets. In [section 3][3. Joining the two data sets] I join the data sets and deal with problems that arise from duplicates in the unemployment data set. The actual visualization is shown in [section 4][4. Choropleth map with unemployment rates across Germany] and [section 5][5. Are there Districts where there is no unemployment data available?].
+
 
 ```{r Set Path to Data}
 # set the root directory to the path where all the files for this assignment are saved
