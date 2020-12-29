@@ -1,0 +1,469 @@
+---
+title: Visualizing Geospatial Data with a Choropleth Map
+author: Nicolas Mollier
+date: '2020-12-29'
+slug: visualizing-geospatial-data-with-a-choropleth-map
+categories: []
+tags:
+  - Visualization
+  - ggplot
+  - geospatial
+  - choropleth map
+subtitle: ''
+summary: ''
+authors: []
+lastmod: '2020-12-29T16:00:22+01:00'
+featured: no
+image:
+  caption: ''
+  focal_point: ''
+  preview_only: no
+projects: []
+---
+
+# Root Directory and Packages
+
+```{r echo = FALSE}
+rm(list = ls())
+```
+
+
+```{r setup, include=FALSE, echo = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r Set Path to Data}
+# set the root directory to the path where all the files for this assignment are saved
+knitr::opts_knit$set(root.dir = "/home/nicolas/Desktop/Uni/WiSe20_21/DS400_DS_Project_Management/Assignments/Assignment_2")
+
+setwd("/home/nicolas/Desktop/Uni/WiSe20_21/DS400_DS_Project_Management/Assignments/Assignment_2")  
+```
+
+```{r Packages, message=FALSE}
+library(raster)
+library(rgdal)
+library(broom)
+library(tidyverse)
+```
+
+# 1. Geospatial data
+
+## Load the geospatial data
+
+First of all, I unzip the file `district_level_ger.zip` in the specified directory and load it into R using the `shapefile` function. The districts are identified by `NUTS_NAME`. Afterwards I use `tidy` to put the geospatial data into a data frame called `patial_data`.
+
+```{r Load Geospatial Data}
+unzip("district_level_ger.zip", exdir = paste0(getwd(), "/Data"))
+shape_file <- raster::shapefile("Data/district_level_ger.shp")
+geospatial_data <- shape_file %>% 
+  tidy(region = "NUTS_NAME")
+```
+
+## Inspect the data
+
+A short inspection of the data reveals that the data frame has `r nrow(geospatial_data)` rows and `r ncol(geospatial_data)` columns.
+
+```{r Data Inspection}
+glimpse(geospatial_data)
+```
+
+For convenience, I rename the column with the districts from group to district.
+
+```{r Rename Column group to region}
+geospatial_data <- geospatial_data %>% 
+  rename(district = group)
+```
+
+## Plot the map of the German districts
+
+Using the longitudinal and latitudinal coordinates and the district column, I plot the map of Germany divided into districts setting the color and size of the lines as well as the filling color to make the plot visually appealing.
+
+```{r German Districts, fig.width = 7, fig.asp=1.25, fig.align='left'}
+geospatial_data %>% 
+  ggplot(aes(x = long, 
+             y = lat, 
+             group = as.factor(district))) +
+  geom_polygon(color = "white", 
+               size = 0.15,
+               fill = "gray26") +
+  theme_void()
+```
+
+# 2. Unemployment data
+
+Next, we take a look at the unemployment data.
+
+## Load the unemployment data
+
+```{r include = FALSE}
+data = readLines("Data/unemployment_data.csv") 
+head(data)
+n_all = length(data)
+skip_head = 4
+skip_tail = 45
+n_header = 1
+n_row = n_all - skip_head - skip_tail - n_header 
+```
+
+- The file `unemployment_data.csv` contains `r n_all` rows
+    - The first `r skip_head` rows contain metadata
+    - The last `r skip_tail` rows contain two empty rows followed by metadata
+    - One row contains the header
+- Skipping the first `r skip_head` rows and the last `r skip_tail` rows while using the row containing the headers as column names leaves us with `r n_row` rows of actual data. Therefore I set *n_max* to `r n_row` and *skip* to `r skip_head` in order to skip the metadata contained in the file. Changing the encoding to `latin1` ensures that German Umlaute (ä, ö and ü) are read in correctly.
+
+```{r Load Unemployment Data, message=FALSE, warning=FALSE}
+# readLines("Data/unemployment_data.csv") 
+
+unemployment_data <- read_delim("Data/unemployment_data.csv",
+                                skip = 4,
+                                delim = ";",
+                                n_max = 540,
+                                # change the encoding to make sure german umlaute (ä, ö, ü)
+                                # are read in correctly
+                               locale = locale(encoding = 'latin1')) 
+```
+
+A quick data inspection reveals that the `unemployment_data` has `r nrow(unemployment_data)` rows and `r ncol(unemployment_data)` columns.
+
+```{r Quick data inspection of the unemployment data}
+glimpse(unemployment_data)
+```
+
+In order to filter for the district-level observations a regular expressionis is used to match all 5-digit ids (destatis_code). 
+
+```{r Subset Unemployment Data}
+district_unemployment <- unemployment_data %>% 
+  filter(str_detect(.$destatis_code, pattern = "^\\d{5}$"))
+
+glimpse(district_unemployment)
+```
+
+The regular expression was able to successfully remove those unemployment data with a `destatis_code` unequal to 5-digits.
+
+```{r}
+# Checking to see whether the regular expression worked as intended
+unemployment_check <- unemployment_data %>% 
+  filter(!str_detect(.$destatis_code, pattern = "^\\d{5}$"))
+
+glimpse(unemployment_check)
+```
+
+# 3. Joining the two data sets
+
+First of all, I inspect the `district` and `id` column of the `geospatial_data` to see what their connection is in order to decide what column to use as a key in the join and in what form. Once the suffix .< digit > is removed from `district`, the two columns are identical. So one could either use the `district` column after removing the suffix or the id column. Since I will need the `district` column in its original form later for plotting, I use `id` as key.
+
+```{r}
+# After removing the suffix .<digit> from district, it is identical to id for all 513241 observations
+geospatial_data %>% 
+  mutate(district = str_remove(district, pattern = ".\\d+")) %>% 
+  mutate(equal = district == id) %>% 
+  select(equal) %>%
+  as_vector() %>% 
+  sum()
+```
+
+Before joining the two data sets, I compare the the `id` column in `geospatial_data` and the `region` column in `district_unemployment`.
+
+```{r}
+geo_id_unique <- geospatial_data %>% 
+  select(id) %>% 
+  arrange(id) %>% 
+  unique()
+
+unemployment_region_unique <- district_unemployment %>% 
+  select(region) %>% 
+  arrange(region) %>% 
+  unique()
+
+head(geo_id_unique, 10)
+head(unemployment_region_unique, 10)
+```
+
+The comparison of the `id` column in `geospatial_data` and the `region` column in `district_unemployment` shows that all letters of the values in the `ìd` column of `geospatial_data` need to be changed to lowercase before we can join `geospatial_data` with `district_unemployment`.
+
+```{r Preparation for Join on geospatial_data}
+# save the geospatial_data data frame before conducting the changes to lowercase 
+# just in case we need it later in its current form
+geospatial_data_pre_cleaning <- geospatial_data
+
+# change id to lowercase
+geospatial_data <- geospatial_data %>% 
+  mutate(id = str_to_lower(id)) 
+```
+
+
+```{r Check, include=FALSE}
+# unique values in column region in geospatial_data
+n_unique_id <- geospatial_data %>% 
+  select(id) %>% 
+  unique() %>% 
+  nrow()
+
+# unique values in column region in district_unemployment
+n_unique_region <- district_unemployment %>% 
+  select(region) %>% 
+  unique() %>% 
+  nrow()
+```
+
+There are `r n_unique_region - n_unique_id` districts in `district_unemployment` that are not included in `geospatial_data`. These cases will therefore not be part of the joined data frame.  
+
+```{r}
+# values in region column of district_unemployment that are not in geospatial_data
+district_unemployment %>% 
+  anti_join(geospatial_data, by = c("region" = "id"))
+```
+
+On the other hand, every district in `geospatial_data` is included in `district_unemployment`. So, unless there are districts with missing values in the unemployment rate, our joined data frame should have unemployment data for all districts in `geospatial_data`.
+
+```{r}
+# values in id column of geospatial_data that are not in region column of district_unemployment
+geospatial_data %>% 
+  anti_join(district_unemployment, by = c("id" = "region"))
+```
+
+Finally, `geospatial_data` and `district_unemployment` are joined via left_join.
+
+```{r Join}
+data_joined <- geospatial_data %>% 
+  left_join(district_unemployment, by = c("id" = "region"))
+```
+
+## Dealing with issues that arise after joining the two data frames
+
+Joining the two data frames lead to an unexpected result: The joined data set contains more observations than geospatial_data despite left_join.
+
+- `data_joined` has `r nrow(data_joined)` rows
+- `geospatial_data` has `r nrow(geospatial_data)` rows
+    
+This can happen when there are duplicate keys in either of the two data frames. 
+    
+```{r}
+glimpse(data_joined)
+glimpse(geospatial_data)
+```
+    
+Let us find out what the problem is. First of all, I want to know which districts have more observations in `data_joined` than in `geospatial_data`. Counting the number of observations per district in `geospatial_data` and the joined data frame and filtering for those cases where there is a mismatch between the two gives us the 17 districts that are responsible for the additional `r nrow(data_joined) - nrow(geospatial_data)` rows in `data_joined`.
+
+```{r Investigation 1}
+# count the number of observations per district in geospatial_data and the joined data frame
+counts <- geospatial_data %>% 
+  count(id) %>% 
+  inner_join(count(data_joined, id), 
+             by = "id", 
+             suffix = c("_geospatial", "_data_joined")) 
+# filter the counts for those case where there is a mismatch between geospatial_data and data_joined
+counts %>% 
+  filter(!(n_geospatial == n_data_joined)) %>% 
+  mutate(diff = n_data_joined - n_geospatial)
+
+# these 17 cases account for the additional 27137 additional rows in data_joined
+counts %>% 
+  filter(!(n_geospatial == n_data_joined)) %>% 
+  mutate(diff = n_data_joined - n_geospatial) %>% 
+  summarise(sum_diff = sum(diff))
+```
+
+Next, I looked for duplicate rows in the column `region` in `district_unemployment`. That results in the same 17 districts we already saw above.
+
+```{r Investigation 2}
+# get vector for selecting duplicate values in region in the next step
+duplicate_index <- district_unemployment %>% 
+  select(region) %>% 
+  duplicated()
+
+duplicate_region <- district_unemployment$region[duplicate_index]
+duplicate_region %>% 
+  sort()
+```
+
+Filtering for those 17 districts in `district_unemployment` reveals the problem.
+
+```{r}
+district_unemployment %>% 
+  filter(region %in% duplicate_region) %>% 
+  arrange(region, unemployed)
+
+```
+
+- `district_unemployment` has 17 duplicate regions
+    - each of those 17 regions has 2 observations: one has values for unemployment and one has missing values
+- Solution: Remove those observations in `data_joined` that are from one of those 17 duplicate regions **AND** have missing values in the variable `unemployed` in order to only keep the cases with actual unemployment data for the 17 districts in question. 
+
+```{r}
+# keep current version of data_joined for later illustration
+data_joined_old <- data_joined
+```
+#
+Let us take a look at the problematic cases in `data_joined`.
+
+```{r}
+data_joined %>% 
+  filter(id %in% duplicate_region) 
+
+problematic_cases <- data_joined %>% 
+  filter(((id %in% duplicate_region) & is.na(unemployed))) 
+problematic_cases
+```
+
+Remove those observations in `data_joined` that are from one of the 17 duplicate regions AND have missing values in the variable `unemployed`.
+
+```{r}
+data_joined <- data_joined %>% 
+  filter(!((id %in% duplicate_region) & is.na(unemployed))) 
+```
+
+After doing that, `data_joined` has exactly the same number of observations as `geospatial_data` and no missings in the variable `unemployment_rate`.
+
+```{r}
+glimpse(data_joined)
+glimpse(geospatial_data)
+
+n_unemployment_rate_missings <- data_joined %>% 
+  select(unemployment_rate) %>% 
+  map(.f = is.na) %>% 
+  unlist() %>% 
+  sum()
+
+n_unemployment_rate_missings
+```
+
+
+# 4. Choropleth map with unemployment rates across Germany
+
+Finally, I visualized the unemployment rates per district. Therefore I took a look at the distribution of the unemployment rates per district first. 
+
+```{r fig.width=8, fig.height=3}
+data_joined %>% 
+  ggplot(aes(unemployment_rate)) +
+  geom_histogram(binwidth = 0.9) +
+  labs(title = "Distribution of unemployment rates",
+       subtitle = "per district")
+
+data_joined %>% 
+  select(unemployment_rate) %>% 
+  as_vector() %>% 
+  quantile()
+```
+
+Lastly, I plot the final map containing the unemployment rates per district. Unlike in the first map above, now the areas of the districts are colored according to the respective unemployment rate in that district. Even though most of the rates are in the region below 5%, I choose a coloring scheme that puts more visual emphasis on the particularly high cases. 
+
+```{r Choropleth Map, fig.width = 7, fig.asp=1.25, fig.align='left'}
+data_joined %>% 
+  ggplot(aes(x = long, 
+             y = lat, 
+             group = as.factor(district),
+             # areas of the districts are colored according to the 
+             # respective unemployment rate in that district
+             fill = unemployment_rate)) +
+  geom_polygon(color = "white", 
+               size = 0.15) +
+  theme_void() +
+  # adjustments to colors used and legend
+  scale_fill_gradient(low = "dodgerblue4", 
+                      high = "orangered2",
+                      n.breaks = 5,
+                      name = "Unemployment Rate (in %)",
+                      guide = guide_legend(label.position = "bottom",
+                                           title.position = "top",
+                                           keywidth = 3)) +
+  # adjust size of title and subtitle and change position of legend
+  theme(legend.position = "bottom",
+        plot.title = element_text(size = 22),
+        plot.subtitle = element_text(size = 16)) +
+  # add title and subtitle
+  labs(title = "Regional Unemployment in Germany",
+       subtitle = "Unemployment Rate per District")
+```
+
+We can see that in the southern part of Germany the unemployment rates are particularly low. However, the eastern districts as well as districts in the so called "Ruhrgebiet" (Duisburg, Essen, Gelsenkirchen, Dortmund) exhibit high unemployment rates. The 10 districts with the highest unemployment rates are displyed below.
+
+```{r, message=FALSE}
+data_joined %>% 
+  filter(unemployment_rate > 10) %>% 
+  group_by(id) %>% 
+  summarise(unemployment_rate = mean(unemployment_rate)) %>%
+  ungroup() %>% 
+  arrange(desc(unemployment_rate))
+```
+
+ 
+
+# 5. Are there Districts where there is no unemployment data available?
+
+In Task 4 it says "color those districts white, where no unemployment data is available". When my final data frame `data_joined` had no missing values in the variable `unemployment_rate` and my plot therefore did not show any missings, I wondered why missings were explicitly mentioned in the task. The following code shows that there are missing unemployment data for the regions in `geospatial_data` if one does not account for the fact, that `district_unemployment` contains 17 districts for which there are 2 observations per district. One with missing values and one with unemployment data. 
+
+```{r}
+duplicates <- district_unemployment %>% 
+  filter(region %in% duplicate_region) %>% 
+  arrange(region, unemployed)
+duplicates
+```
+
+If the 17 observations with missing values are not dealt with like I did in line 300 ff, left_joining `geospatial_data` and `district_unemployment` results in a data frame with more observations than `geospatial_data` because of the duplicate key in `district_unemployment`. This data frame would then contain missing unemployment data for the 17 districts with duplicate values in `district_unemployment`, this case is illustrated with `data_joined_old` that I saved earlier for the purpose of this illustration.
+
+```{r}
+data_joined %>% 
+  select(unemployment_rate) %>% 
+  is.na() %>% 
+  sum()
+
+data_joined_old %>% 
+  select(unemployment_rate) %>% 
+  is.na() %>% 
+  sum()
+```
+
+The following map has those districts containing missing values (and also non-missing values) in `data_joined_old` highlighted in orange.
+
+```{r fig.width = 7, fig.asp=1.25, fig.align='left'}
+data_joined_old %>% 
+  mutate(duplicate = id %in% duplicate_region) %>% 
+  ggplot(aes(x = long, 
+             y = lat, 
+             group = as.factor(district),
+             fill = duplicate)) +
+  geom_polygon(color = "white", 
+               size = 0.15) +
+  theme_void() +
+  scale_fill_discrete(type = list(c("gray26", "orangered2")),
+                      guide = guide_legend(label.position = "bottom",
+                                           title.position = "top",
+                                           keywidth = 3)) +
+  theme(legend.position = "bottom")
+```
+
+Plotting the choropleth with unemployment rates would then lead to a graph with missing values being indicated in the map in grey but somehow not for all of the regions where there exist both missing and available unemployment data (Why this is the case, I was not able to figure out).
+
+```{r fig.width = 7, fig.asp=1.25, fig.align='left'}
+data_joined_old %>% 
+  ggplot(aes(x = long, 
+             y = lat, 
+             group = as.factor(district),
+             fill = unemployment_rate)) +
+  geom_polygon(color = "white", 
+               size = 0.15) +
+  theme_void() +
+  scale_fill_gradient(low = "dodgerblue4", 
+                      high = "orangered",
+                      n.breaks = 5,
+                      name = "Unemployment Rate (in %)",
+                      guide = guide_legend(label.position = "bottom",
+                                           title.position = "top",
+                                           keywidth = 3),
+                      # district areas with missing values in unemployment_rate are colored in grey
+                      na.value = "gray71") +
+  theme(legend.position = "bottom",
+        plot.title = element_text(size = 22),
+        plot.subtitle = element_text(size = 16)) +
+  labs(title = "Regional Unemployment in Germany",
+       subtitle = "Unemployment Rate per District")
+```
+
+## Conclusion
+
+If one uses all available unemployment data there is unemployment data for all regions in `geospatial_data` and therefore no missing unemployment rates to be displayed in the final map.
+
+
+

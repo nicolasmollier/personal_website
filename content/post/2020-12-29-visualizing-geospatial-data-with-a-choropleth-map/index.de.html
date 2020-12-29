@@ -1,0 +1,551 @@
+---
+title: Visualizing Geospatial Data with a Choropleth Map
+author: Nicolas Mollier
+date: '2020-12-29'
+slug: visualizing-geospatial-data-with-a-choropleth-map
+categories: []
+tags:
+  - Visualization
+  - ggplot
+  - geospatial
+  - choropleth map
+subtitle: ''
+summary: ''
+authors: []
+lastmod: '2020-12-29T16:00:22+01:00'
+featured: no
+image:
+  caption: ''
+  focal_point: ''
+  preview_only: no
+projects: []
+---
+
+<link href="/rmarkdown-libs/anchor-sections/anchor-sections.css" rel="stylesheet" />
+<script src="/rmarkdown-libs/anchor-sections/anchor-sections.js"></script>
+
+
+<div id="root-directory-and-packages" class="section level1">
+<h1>Root Directory and Packages</h1>
+<pre class="r"><code># set the root directory to the path where all the files for this assignment are saved
+knitr::opts_knit$set(root.dir = &quot;/home/nicolas/Desktop/Uni/WiSe20_21/DS400_DS_Project_Management/Assignments/Assignment_2&quot;)
+
+setwd(&quot;/home/nicolas/Desktop/Uni/WiSe20_21/DS400_DS_Project_Management/Assignments/Assignment_2&quot;)  </code></pre>
+<pre class="r"><code>library(raster)
+library(rgdal)
+library(broom)
+library(tidyverse)</code></pre>
+</div>
+<div id="geospatial-data" class="section level1">
+<h1>1. Geospatial data</h1>
+<div id="load-the-geospatial-data" class="section level2">
+<h2>Load the geospatial data</h2>
+<p>First of all, I unzip the file <code>district_level_ger.zip</code> in the specified directory and load it into R using the <code>shapefile</code> function. The districts are identified by <code>NUTS_NAME</code>. Afterwards I use <code>tidy</code> to put the geospatial data into a data frame called <code>patial_data</code>.</p>
+<pre class="r"><code>unzip(&quot;district_level_ger.zip&quot;, exdir = paste0(getwd(), &quot;/Data&quot;))
+shape_file &lt;- raster::shapefile(&quot;Data/district_level_ger.shp&quot;)
+geospatial_data &lt;- shape_file %&gt;% 
+  tidy(region = &quot;NUTS_NAME&quot;)</code></pre>
+</div>
+<div id="inspect-the-data" class="section level2">
+<h2>Inspect the data</h2>
+<p>A short inspection of the data reveals that the data frame has 513241 rows and 7 columns.</p>
+<pre class="r"><code>glimpse(geospatial_data)</code></pre>
+<pre><code>## Rows: 513,241
+## Columns: 7
+## $ long  &lt;dbl&gt; 3358162, 3358102, 3358179, 3358306, 3358452, 3358393, 3358286, …
+## $ lat   &lt;dbl&gt; 5584549, 5584406, 5584335, 5584209, 5584001, 5583780, 5583541, …
+## $ order &lt;int&gt; 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, …
+## $ hole  &lt;lgl&gt; FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, …
+## $ piece &lt;fct&gt; 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
+## $ group &lt;fct&gt; Ahrweiler.1, Ahrweiler.1, Ahrweiler.1, Ahrweiler.1, Ahrweiler.1…
+## $ id    &lt;chr&gt; &quot;Ahrweiler&quot;, &quot;Ahrweiler&quot;, &quot;Ahrweiler&quot;, &quot;Ahrweiler&quot;, &quot;Ahrweiler&quot;…</code></pre>
+<p>For convenience, I rename the column with the districts from group to district.</p>
+<pre class="r"><code>geospatial_data &lt;- geospatial_data %&gt;% 
+  rename(district = group)</code></pre>
+</div>
+<div id="plot-the-map-of-the-german-districts" class="section level2">
+<h2>Plot the map of the German districts</h2>
+<p>Using the longitudinal and latitudinal coordinates and the district column, I plot the map of Germany divided into districts setting the color and size of the lines as well as the filling color to make the plot visually appealing.</p>
+<pre class="r"><code>geospatial_data %&gt;% 
+  ggplot(aes(x = long, 
+             y = lat, 
+             group = as.factor(district))) +
+  geom_polygon(color = &quot;white&quot;, 
+               size = 0.15,
+               fill = &quot;gray26&quot;) +
+  theme_void()</code></pre>
+<p><img src="/post/2020-12-29-visualizing-geospatial-data-with-a-choropleth-map/index.de_files/figure-html/German%20Districts-1.png" width="672" style="display: block; margin: auto auto auto 0;" /></p>
+</div>
+</div>
+<div id="unemployment-data" class="section level1">
+<h1>2. Unemployment data</h1>
+<p>Next, we take a look at the unemployment data.</p>
+<div id="load-the-unemployment-data" class="section level2">
+<h2>Load the unemployment data</h2>
+<ul>
+<li>The file <code>unemployment_data.csv</code> contains 590 rows
+<ul>
+<li>The first 4 rows contain metadata</li>
+<li>The last 45 rows contain two empty rows followed by metadata</li>
+<li>One row contains the header</li>
+</ul></li>
+<li>Skipping the first 4 rows and the last 45 rows while using the row containing the headers as column names leaves us with 540 rows of actual data. Therefore I set <em>n_max</em> to 540 and <em>skip</em> to 4 in order to skip the metadata contained in the file. Changing the encoding to <code>latin1</code> ensures that German Umlaute (ä, ö and ü) are read in correctly.</li>
+</ul>
+<pre class="r"><code># readLines(&quot;Data/unemployment_data.csv&quot;) 
+
+unemployment_data &lt;- read_delim(&quot;Data/unemployment_data.csv&quot;,
+                                skip = 4,
+                                delim = &quot;;&quot;,
+                                n_max = 540,
+                                # change the encoding to make sure german umlaute (ä, ö, ü)
+                                # are read in correctly
+                               locale = locale(encoding = &#39;latin1&#39;)) </code></pre>
+<p>A quick data inspection reveals that the <code>unemployment_data</code> has 540 rows and 4 columns.</p>
+<pre class="r"><code>glimpse(unemployment_data)</code></pre>
+<pre><code>## Rows: 540
+## Columns: 4
+## $ destatis_code     &lt;chr&gt; &quot;DG&quot;, &quot;01&quot;, &quot;01001&quot;, &quot;01002&quot;, &quot;01003&quot;, &quot;01004&quot;, &quot;01…
+## $ region            &lt;chr&gt; &quot;deutschland&quot;, &quot;schleswig-holstein&quot;, &quot;flensburg, kr…
+## $ unemployed        &lt;dbl&gt; 2266720, 79678, 4174, 10556, 8400, 3386, 3815, 4918…
+## $ unemployment_rate &lt;dbl&gt; 5.0, 5.1, 8.0, 7.6, 7.3, 7.9, 5.5, 4.7, 4.8, 5.0, 4…</code></pre>
+<p>In order to filter for the district-level observations a regular expressionis is used to match all 5-digit ids (destatis_code).</p>
+<pre class="r"><code>district_unemployment &lt;- unemployment_data %&gt;% 
+  filter(str_detect(.$destatis_code, pattern = &quot;^\\d{5}$&quot;))
+
+glimpse(district_unemployment)</code></pre>
+<pre><code>## Rows: 473
+## Columns: 4
+## $ destatis_code     &lt;chr&gt; &quot;01001&quot;, &quot;01002&quot;, &quot;01003&quot;, &quot;01004&quot;, &quot;01051&quot;, &quot;01053…
+## $ region            &lt;chr&gt; &quot;flensburg, kreisfreie stadt&quot;, &quot;kiel, kreisfreie st…
+## $ unemployed        &lt;dbl&gt; 4174, 10556, 8400, 3386, 3815, 4918, 4501, 5257, 79…
+## $ unemployment_rate &lt;dbl&gt; 8.0, 7.6, 7.3, 7.9, 5.5, 4.7, 4.8, 5.0, 4.5, 4.0, 3…</code></pre>
+<p>The regular expression was able to successfully remove those unemployment data with a <code>destatis_code</code> unequal to 5-digits.</p>
+<pre class="r"><code># Checking to see whether the regular expression worked as intended
+unemployment_check &lt;- unemployment_data %&gt;% 
+  filter(!str_detect(.$destatis_code, pattern = &quot;^\\d{5}$&quot;))
+
+glimpse(unemployment_check)</code></pre>
+<pre><code>## Rows: 67
+## Columns: 4
+## $ destatis_code     &lt;chr&gt; &quot;DG&quot;, &quot;01&quot;, &quot;02&quot;, &quot;03&quot;, &quot;031&quot;, &quot;032&quot;, &quot;03241001&quot;, &quot;…
+## $ region            &lt;chr&gt; &quot;deutschland&quot;, &quot;schleswig-holstein&quot;, &quot;hamburg&quot;, &quot;ni…
+## $ unemployed        &lt;dbl&gt; 2266720, 79678, 64774, 218123, 44187, 67913, 23396,…
+## $ unemployment_rate &lt;dbl&gt; 5.0, 5.1, 6.1, 5.0, 5.2, 5.9, 7.8, 4.7, 4.5, 9.9, 6…</code></pre>
+</div>
+</div>
+<div id="joining-the-two-data-sets" class="section level1">
+<h1>3. Joining the two data sets</h1>
+<p>First of all, I inspect the <code>district</code> and <code>id</code> column of the <code>geospatial_data</code> to see what their connection is in order to decide what column to use as a key in the join and in what form. Once the suffix .&lt; digit &gt; is removed from <code>district</code>, the two columns are identical. So one could either use the <code>district</code> column after removing the suffix or the id column. Since I will need the <code>district</code> column in its original form later for plotting, I use <code>id</code> as key.</p>
+<pre class="r"><code># After removing the suffix .&lt;digit&gt; from district, it is identical to id for all 513241 observations
+geospatial_data %&gt;% 
+  mutate(district = str_remove(district, pattern = &quot;.\\d+&quot;)) %&gt;% 
+  mutate(equal = district == id) %&gt;% 
+  select(equal) %&gt;%
+  as_vector() %&gt;% 
+  sum()</code></pre>
+<pre><code>## [1] 513241</code></pre>
+<p>Before joining the two data sets, I compare the the <code>id</code> column in <code>geospatial_data</code> and the <code>region</code> column in <code>district_unemployment</code>.</p>
+<pre class="r"><code>geo_id_unique &lt;- geospatial_data %&gt;% 
+  select(id) %&gt;% 
+  arrange(id) %&gt;% 
+  unique()
+
+unemployment_region_unique &lt;- district_unemployment %&gt;% 
+  select(region) %&gt;% 
+  arrange(region) %&gt;% 
+  unique()
+
+head(geo_id_unique, 10)</code></pre>
+<pre><code>## # A tibble: 10 x 1
+##    id                       
+##    &lt;chr&gt;                    
+##  1 Ahrweiler                
+##  2 Aichach-Friedberg        
+##  3 Alb-Donau-Kreis          
+##  4 Altenburger Land         
+##  5 Altenkirchen (Westerwald)
+##  6 Altmarkkreis Salzwedel   
+##  7 Altötting                
+##  8 Alzey-Worms              
+##  9 Amberg-Sulzbach          
+## 10 Amberg, Kreisfreie Stadt</code></pre>
+<pre class="r"><code>head(unemployment_region_unique, 10)</code></pre>
+<pre><code>## # A tibble: 10 x 1
+##    region                   
+##    &lt;chr&gt;                    
+##  1 aachen                   
+##  2 ahrweiler                
+##  3 aichach-friedberg        
+##  4 alb-donau-kreis          
+##  5 altenburger land         
+##  6 altenkirchen (westerwald)
+##  7 altmarkkreis salzwedel   
+##  8 altötting                
+##  9 alzey-worms              
+## 10 amberg-sulzbach</code></pre>
+<p>The comparison of the <code>id</code> column in <code>geospatial_data</code> and the <code>region</code> column in <code>district_unemployment</code> shows that all letters of the values in the <code>ìd</code> column of <code>geospatial_data</code> need to be changed to lowercase before we can join <code>geospatial_data</code> with <code>district_unemployment</code>.</p>
+<pre class="r"><code># save the geospatial_data data frame before conducting the changes to lowercase 
+# just in case we need it later in its current form
+geospatial_data_pre_cleaning &lt;- geospatial_data
+
+# change id to lowercase
+geospatial_data &lt;- geospatial_data %&gt;% 
+  mutate(id = str_to_lower(id)) </code></pre>
+<p>There are 55 districts in <code>district_unemployment</code> that are not included in <code>geospatial_data</code>. These cases will therefore not be part of the joined data frame.</p>
+<pre class="r"><code># values in region column of district_unemployment that are not in geospatial_data
+district_unemployment %&gt;% 
+  anti_join(geospatial_data, by = c(&quot;region&quot; = &quot;id&quot;))</code></pre>
+<pre><code>## # A tibble: 55 x 4
+##    destatis_code region                              unemployed unemployment_ra…
+##    &lt;chr&gt;         &lt;chr&gt;                                    &lt;dbl&gt;            &lt;dbl&gt;
+##  1 03156         osterode am harz                            NA               NA
+##  2 05354         aachen                                      NA               NA
+##  3 13001         kreisfreie stadt greifswald                 NA               NA
+##  4 13002         kreisfreie stadt neubrandenburg, s…         NA               NA
+##  5 13005         kreisfreie stadt stralsund                  NA               NA
+##  6 13006         kreisfreie stadt wismar                     NA               NA
+##  7 13051         bad doberan                                 NA               NA
+##  8 13052         demmin                                      NA               NA
+##  9 13053         güstrow                                     NA               NA
+## 10 13054         ludwigslust                                 NA               NA
+## # … with 45 more rows</code></pre>
+<p>On the other hand, every district in <code>geospatial_data</code> is included in <code>district_unemployment</code>. So, unless there are districts with missing values in the unemployment rate, our joined data frame should have unemployment data for all districts in <code>geospatial_data</code>.</p>
+<pre class="r"><code># values in id column of geospatial_data that are not in region column of district_unemployment
+geospatial_data %&gt;% 
+  anti_join(district_unemployment, by = c(&quot;id&quot; = &quot;region&quot;))</code></pre>
+<pre><code>## # A tibble: 0 x 7
+## # … with 7 variables: long &lt;dbl&gt;, lat &lt;dbl&gt;, order &lt;int&gt;, hole &lt;lgl&gt;,
+## #   piece &lt;fct&gt;, district &lt;fct&gt;, id &lt;chr&gt;</code></pre>
+<p>Finally, <code>geospatial_data</code> and <code>district_unemployment</code> are joined via left_join.</p>
+<pre class="r"><code>data_joined &lt;- geospatial_data %&gt;% 
+  left_join(district_unemployment, by = c(&quot;id&quot; = &quot;region&quot;))</code></pre>
+<div id="dealing-with-issues-that-arise-after-joining-the-two-data-frames" class="section level2">
+<h2>Dealing with issues that arise after joining the two data frames</h2>
+<p>Joining the two data frames lead to an unexpected result: The joined data set contains more observations than geospatial_data despite left_join.</p>
+<ul>
+<li><code>data_joined</code> has 540378 rows</li>
+<li><code>geospatial_data</code> has 513241 rows</li>
+</ul>
+<p>This can happen when there are duplicate keys in either of the two data frames.</p>
+<pre class="r"><code>glimpse(data_joined)</code></pre>
+<pre><code>## Rows: 540,378
+## Columns: 10
+## $ long              &lt;dbl&gt; 3358162, 3358102, 3358179, 3358306, 3358452, 335839…
+## $ lat               &lt;dbl&gt; 5584549, 5584406, 5584335, 5584209, 5584001, 558378…
+## $ order             &lt;int&gt; 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, …
+## $ hole              &lt;lgl&gt; FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FA…
+## $ piece             &lt;fct&gt; 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
+## $ district          &lt;fct&gt; Ahrweiler.1, Ahrweiler.1, Ahrweiler.1, Ahrweiler.1,…
+## $ id                &lt;chr&gt; &quot;ahrweiler&quot;, &quot;ahrweiler&quot;, &quot;ahrweiler&quot;, &quot;ahrweiler&quot;,…
+## $ destatis_code     &lt;chr&gt; &quot;07131&quot;, &quot;07131&quot;, &quot;07131&quot;, &quot;07131&quot;, &quot;07131&quot;, &quot;07131…
+## $ unemployed        &lt;dbl&gt; 2411, 2411, 2411, 2411, 2411, 2411, 2411, 2411, 241…
+## $ unemployment_rate &lt;dbl&gt; 3.4, 3.4, 3.4, 3.4, 3.4, 3.4, 3.4, 3.4, 3.4, 3.4, 3…</code></pre>
+<pre class="r"><code>glimpse(geospatial_data)</code></pre>
+<pre><code>## Rows: 513,241
+## Columns: 7
+## $ long     &lt;dbl&gt; 3358162, 3358102, 3358179, 3358306, 3358452, 3358393, 335828…
+## $ lat      &lt;dbl&gt; 5584549, 5584406, 5584335, 5584209, 5584001, 5583780, 558354…
+## $ order    &lt;int&gt; 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 1…
+## $ hole     &lt;lgl&gt; FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALS…
+## $ piece    &lt;fct&gt; 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
+## $ district &lt;fct&gt; Ahrweiler.1, Ahrweiler.1, Ahrweiler.1, Ahrweiler.1, Ahrweile…
+## $ id       &lt;chr&gt; &quot;ahrweiler&quot;, &quot;ahrweiler&quot;, &quot;ahrweiler&quot;, &quot;ahrweiler&quot;, &quot;ahrweil…</code></pre>
+<p>Let us find out what the problem is. First of all, I want to know which districts have more observations in <code>data_joined</code> than in <code>geospatial_data</code>. Counting the number of observations per district in <code>geospatial_data</code> and the joined data frame and filtering for those cases where there is a mismatch between the two gives us the 17 districts that are responsible for the additional 27137 rows in <code>data_joined</code>.</p>
+<pre class="r"><code># count the number of observations per district in geospatial_data and the joined data frame
+counts &lt;- geospatial_data %&gt;% 
+  count(id) %&gt;% 
+  inner_join(count(data_joined, id), 
+             by = &quot;id&quot;, 
+             suffix = c(&quot;_geospatial&quot;, &quot;_data_joined&quot;)) 
+# filter the counts for those case where there is a mismatch between geospatial_data and data_joined
+counts %&gt;% 
+  filter(!(n_geospatial == n_data_joined)) %&gt;% 
+  mutate(diff = n_data_joined - n_geospatial)</code></pre>
+<pre><code>## # A tibble: 17 x 4
+##    id                              n_geospatial n_data_joined  diff
+##    &lt;chr&gt;                                  &lt;int&gt;         &lt;int&gt; &lt;int&gt;
+##  1 altmarkkreis salzwedel                  2004          4008  2004
+##  2 bautzen                                 1659          3318  1659
+##  3 burgenlandkreis                         1558          3116  1558
+##  4 chemnitz, kreisfreie stadt               447           894   447
+##  5 dresden, kreisfreie stadt                648          1296   648
+##  6 görlitz                                 2657          5314  2657
+##  7 göttingen                               2275          4550  2275
+##  8 halle (saale), kreisfreie stadt          578          1156   578
+##  9 jerichower land                         1815          3630  1815
+## 10 leipzig, kreisfreie stadt                493           986   493
+## 11 magdeburg, kreisfreie stadt              402           804   402
+## 12 meißen                                  1127          2254  1127
+## 13 nordwestmecklenburg                     4271          8542  4271
+## 14 stendal                                 2582          5164  2582
+## 15 vogtlandkreis                           1853          3706  1853
+## 16 wittenberg                              1623          3246  1623
+## 17 zwickau                                 1145          2290  1145</code></pre>
+<pre class="r"><code># these 17 cases account for the additional 27137 additional rows in data_joined
+counts %&gt;% 
+  filter(!(n_geospatial == n_data_joined)) %&gt;% 
+  mutate(diff = n_data_joined - n_geospatial) %&gt;% 
+  summarise(sum_diff = sum(diff))</code></pre>
+<pre><code>## # A tibble: 1 x 1
+##   sum_diff
+##      &lt;int&gt;
+## 1    27137</code></pre>
+<p>Next, I looked for duplicate rows in the column <code>region</code> in <code>district_unemployment</code>. That results in the same 17 districts we already saw above.</p>
+<pre class="r"><code># get vector for selecting duplicate values in region in the next step
+duplicate_index &lt;- district_unemployment %&gt;% 
+  select(region) %&gt;% 
+  duplicated()
+
+duplicate_region &lt;- district_unemployment$region[duplicate_index]
+duplicate_region %&gt;% 
+  sort()</code></pre>
+<pre><code>##  [1] &quot;altmarkkreis salzwedel&quot;          &quot;bautzen&quot;                        
+##  [3] &quot;burgenlandkreis&quot;                 &quot;chemnitz, kreisfreie stadt&quot;     
+##  [5] &quot;dresden, kreisfreie stadt&quot;       &quot;görlitz&quot;                        
+##  [7] &quot;göttingen&quot;                       &quot;halle (saale), kreisfreie stadt&quot;
+##  [9] &quot;jerichower land&quot;                 &quot;leipzig, kreisfreie stadt&quot;      
+## [11] &quot;magdeburg, kreisfreie stadt&quot;     &quot;meißen&quot;                         
+## [13] &quot;nordwestmecklenburg&quot;             &quot;stendal&quot;                        
+## [15] &quot;vogtlandkreis&quot;                   &quot;wittenberg&quot;                     
+## [17] &quot;zwickau&quot;</code></pre>
+<p>Filtering for those 17 districts in <code>district_unemployment</code> reveals the problem.</p>
+<pre class="r"><code>district_unemployment %&gt;% 
+  filter(region %in% duplicate_region) %&gt;% 
+  arrange(region, unemployed)</code></pre>
+<pre><code>## # A tibble: 34 x 4
+##    destatis_code region                     unemployed unemployment_rate
+##    &lt;chr&gt;         &lt;chr&gt;                           &lt;dbl&gt;             &lt;dbl&gt;
+##  1 15081         altmarkkreis salzwedel           2908               6.4
+##  2 15370         altmarkkreis salzwedel             NA              NA  
+##  3 14625         bautzen                          7872               5  
+##  4 14272         bautzen                            NA              NA  
+##  5 15084         burgenlandkreis                  6043               6.5
+##  6 15256         burgenlandkreis                    NA              NA  
+##  7 14511         chemnitz, kreisfreie stadt       8099               6.5
+##  8 14161         chemnitz, kreisfreie stadt         NA              NA  
+##  9 14612         dresden, kreisfreie stadt       16763               5.6
+## 10 14262         dresden, kreisfreie stadt          NA              NA  
+## # … with 24 more rows</code></pre>
+<ul>
+<li><code>district_unemployment</code> has 17 duplicate regions
+<ul>
+<li>each of those 17 regions has 2 observations: one has values for unemployment and one has missing values</li>
+</ul></li>
+<li>Solution: Remove those observations in <code>data_joined</code> that are from one of those 17 duplicate regions <strong>AND</strong> have missing values in the variable <code>unemployed</code> in order to only keep the cases with actual unemployment data for the 17 districts in question.</li>
+</ul>
+<pre class="r"><code># keep current version of data_joined for later illustration
+data_joined_old &lt;- data_joined</code></pre>
+</div>
+</div>
+<div id="section" class="section level1">
+<h1></h1>
+<p>Let us take a look at the problematic cases in <code>data_joined</code>.</p>
+<pre class="r"><code>data_joined %&gt;% 
+  filter(id %in% duplicate_region) </code></pre>
+<pre><code>## # A tibble: 54,274 x 10
+##      long    lat order hole  piece district id    destatis_code unemployed
+##     &lt;dbl&gt;  &lt;dbl&gt; &lt;int&gt; &lt;lgl&gt; &lt;fct&gt; &lt;fct&gt;    &lt;chr&gt; &lt;chr&gt;              &lt;dbl&gt;
+##  1 3.63e6 5.83e6  6394 FALSE 1     Altmark… altm… 15081               2908
+##  2 3.63e6 5.83e6  6394 FALSE 1     Altmark… altm… 15370                 NA
+##  3 3.63e6 5.83e6  6395 FALSE 1     Altmark… altm… 15081               2908
+##  4 3.63e6 5.83e6  6395 FALSE 1     Altmark… altm… 15370                 NA
+##  5 3.63e6 5.83e6  6396 FALSE 1     Altmark… altm… 15081               2908
+##  6 3.63e6 5.83e6  6396 FALSE 1     Altmark… altm… 15370                 NA
+##  7 3.63e6 5.83e6  6397 FALSE 1     Altmark… altm… 15081               2908
+##  8 3.63e6 5.83e6  6397 FALSE 1     Altmark… altm… 15370                 NA
+##  9 3.63e6 5.83e6  6398 FALSE 1     Altmark… altm… 15081               2908
+## 10 3.63e6 5.83e6  6398 FALSE 1     Altmark… altm… 15370                 NA
+## # … with 54,264 more rows, and 1 more variable: unemployment_rate &lt;dbl&gt;</code></pre>
+<pre class="r"><code>problematic_cases &lt;- data_joined %&gt;% 
+  filter(((id %in% duplicate_region) &amp; is.na(unemployed))) 
+problematic_cases</code></pre>
+<pre><code>## # A tibble: 27,137 x 10
+##      long    lat order hole  piece district id    destatis_code unemployed
+##     &lt;dbl&gt;  &lt;dbl&gt; &lt;int&gt; &lt;lgl&gt; &lt;fct&gt; &lt;fct&gt;    &lt;chr&gt; &lt;chr&gt;              &lt;dbl&gt;
+##  1 3.63e6 5.83e6  6394 FALSE 1     Altmark… altm… 15370                 NA
+##  2 3.63e6 5.83e6  6395 FALSE 1     Altmark… altm… 15370                 NA
+##  3 3.63e6 5.83e6  6396 FALSE 1     Altmark… altm… 15370                 NA
+##  4 3.63e6 5.83e6  6397 FALSE 1     Altmark… altm… 15370                 NA
+##  5 3.63e6 5.83e6  6398 FALSE 1     Altmark… altm… 15370                 NA
+##  6 3.63e6 5.83e6  6399 FALSE 1     Altmark… altm… 15370                 NA
+##  7 3.63e6 5.83e6  6400 FALSE 1     Altmark… altm… 15370                 NA
+##  8 3.63e6 5.83e6  6401 FALSE 1     Altmark… altm… 15370                 NA
+##  9 3.63e6 5.83e6  6402 FALSE 1     Altmark… altm… 15370                 NA
+## 10 3.63e6 5.83e6  6403 FALSE 1     Altmark… altm… 15370                 NA
+## # … with 27,127 more rows, and 1 more variable: unemployment_rate &lt;dbl&gt;</code></pre>
+<p>Remove those observations in <code>data_joined</code> that are from one of the 17 duplicate regions AND have missing values in the variable <code>unemployed</code>.</p>
+<pre class="r"><code>data_joined &lt;- data_joined %&gt;% 
+  filter(!((id %in% duplicate_region) &amp; is.na(unemployed))) </code></pre>
+<p>After doing that, <code>data_joined</code> has exactly the same number of observations as <code>geospatial_data</code> and no missings in the variable <code>unemployment_rate</code>.</p>
+<pre class="r"><code>glimpse(data_joined)</code></pre>
+<pre><code>## Rows: 513,241
+## Columns: 10
+## $ long              &lt;dbl&gt; 3358162, 3358102, 3358179, 3358306, 3358452, 335839…
+## $ lat               &lt;dbl&gt; 5584549, 5584406, 5584335, 5584209, 5584001, 558378…
+## $ order             &lt;int&gt; 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, …
+## $ hole              &lt;lgl&gt; FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FA…
+## $ piece             &lt;fct&gt; 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
+## $ district          &lt;fct&gt; Ahrweiler.1, Ahrweiler.1, Ahrweiler.1, Ahrweiler.1,…
+## $ id                &lt;chr&gt; &quot;ahrweiler&quot;, &quot;ahrweiler&quot;, &quot;ahrweiler&quot;, &quot;ahrweiler&quot;,…
+## $ destatis_code     &lt;chr&gt; &quot;07131&quot;, &quot;07131&quot;, &quot;07131&quot;, &quot;07131&quot;, &quot;07131&quot;, &quot;07131…
+## $ unemployed        &lt;dbl&gt; 2411, 2411, 2411, 2411, 2411, 2411, 2411, 2411, 241…
+## $ unemployment_rate &lt;dbl&gt; 3.4, 3.4, 3.4, 3.4, 3.4, 3.4, 3.4, 3.4, 3.4, 3.4, 3…</code></pre>
+<pre class="r"><code>glimpse(geospatial_data)</code></pre>
+<pre><code>## Rows: 513,241
+## Columns: 7
+## $ long     &lt;dbl&gt; 3358162, 3358102, 3358179, 3358306, 3358452, 3358393, 335828…
+## $ lat      &lt;dbl&gt; 5584549, 5584406, 5584335, 5584209, 5584001, 5583780, 558354…
+## $ order    &lt;int&gt; 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 1…
+## $ hole     &lt;lgl&gt; FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALS…
+## $ piece    &lt;fct&gt; 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
+## $ district &lt;fct&gt; Ahrweiler.1, Ahrweiler.1, Ahrweiler.1, Ahrweiler.1, Ahrweile…
+## $ id       &lt;chr&gt; &quot;ahrweiler&quot;, &quot;ahrweiler&quot;, &quot;ahrweiler&quot;, &quot;ahrweiler&quot;, &quot;ahrweil…</code></pre>
+<pre class="r"><code>n_unemployment_rate_missings &lt;- data_joined %&gt;% 
+  select(unemployment_rate) %&gt;% 
+  map(.f = is.na) %&gt;% 
+  unlist() %&gt;% 
+  sum()
+
+n_unemployment_rate_missings</code></pre>
+<pre><code>## [1] 0</code></pre>
+</div>
+<div id="choropleth-map-with-unemployment-rates-across-germany" class="section level1">
+<h1>4. Choropleth map with unemployment rates across Germany</h1>
+<p>Finally, I visualized the unemployment rates per district. Therefore I took a look at the distribution of the unemployment rates per district first.</p>
+<pre class="r"><code>data_joined %&gt;% 
+  ggplot(aes(unemployment_rate)) +
+  geom_histogram(binwidth = 0.9) +
+  labs(title = &quot;Distribution of unemployment rates&quot;,
+       subtitle = &quot;per district&quot;)</code></pre>
+<p><img src="/post/2020-12-29-visualizing-geospatial-data-with-a-choropleth-map/index.de_files/figure-html/unnamed-chunk-14-1.png" width="768" /></p>
+<pre class="r"><code>data_joined %&gt;% 
+  select(unemployment_rate) %&gt;% 
+  as_vector() %&gt;% 
+  quantile()</code></pre>
+<pre><code>##   0%  25%  50%  75% 100% 
+##  1.3  2.8  4.0  5.4 12.8</code></pre>
+<p>Lastly, I plot the final map containing the unemployment rates per district. Unlike in the first map above, now the areas of the districts are colored according to the respective unemployment rate in that district. Even though most of the rates are in the region below 5%, I choose a coloring scheme that puts more visual emphasis on the particularly high cases.</p>
+<pre class="r"><code>data_joined %&gt;% 
+  ggplot(aes(x = long, 
+             y = lat, 
+             group = as.factor(district),
+             # areas of the districts are colored according to the 
+             # respective unemployment rate in that district
+             fill = unemployment_rate)) +
+  geom_polygon(color = &quot;white&quot;, 
+               size = 0.15) +
+  theme_void() +
+  # adjustments to colors used and legend
+  scale_fill_gradient(low = &quot;dodgerblue4&quot;, 
+                      high = &quot;orangered2&quot;,
+                      n.breaks = 5,
+                      name = &quot;Unemployment Rate (in %)&quot;,
+                      guide = guide_legend(label.position = &quot;bottom&quot;,
+                                           title.position = &quot;top&quot;,
+                                           keywidth = 3)) +
+  # adjust size of title and subtitle and change position of legend
+  theme(legend.position = &quot;bottom&quot;,
+        plot.title = element_text(size = 22),
+        plot.subtitle = element_text(size = 16)) +
+  # add title and subtitle
+  labs(title = &quot;Regional Unemployment in Germany&quot;,
+       subtitle = &quot;Unemployment Rate per District&quot;)</code></pre>
+<p><img src="/post/2020-12-29-visualizing-geospatial-data-with-a-choropleth-map/index.de_files/figure-html/Choropleth%20Map-1.png" width="672" style="display: block; margin: auto auto auto 0;" /></p>
+<p>We can see that in the southern part of Germany the unemployment rates are particularly low. However, the eastern districts as well as districts in the so called “Ruhrgebiet” (Duisburg, Essen, Gelsenkirchen, Dortmund) exhibit high unemployment rates. The 10 districts with the highest unemployment rates are displyed below.</p>
+<pre class="r"><code>data_joined %&gt;% 
+  filter(unemployment_rate &gt; 10) %&gt;% 
+  group_by(id) %&gt;% 
+  summarise(unemployment_rate = mean(unemployment_rate)) %&gt;%
+  ungroup() %&gt;% 
+  arrange(desc(unemployment_rate))</code></pre>
+<pre><code>## # A tibble: 10 x 2
+##    id                              unemployment_rate
+##    &lt;chr&gt;                                       &lt;dbl&gt;
+##  1 gelsenkirchen, kreisfreie stadt              12.8
+##  2 bremerhaven, kreisfreie stadt                12.2
+##  3 duisburg, kreisfreie stadt                   10.8
+##  4 uckermark                                    10.8
+##  5 pirmasens, kreisfreie stadt                  10.7
+##  6 herne, kreisfreie stadt                      10.3
+##  7 wilhelmshaven, kreisfreie stadt              10.3
+##  8 essen, kreisfreie stadt                      10.2
+##  9 dortmund, kreisfreie stadt                   10.1
+## 10 krefeld, kreisfreie stadt                    10.1</code></pre>
+</div>
+<div id="are-there-districts-where-there-is-no-unemployment-data-available" class="section level1">
+<h1>5. Are there Districts where there is no unemployment data available?</h1>
+<p>In Task 4 it says “color those districts white, where no unemployment data is available”. When my final data frame <code>data_joined</code> had no missing values in the variable <code>unemployment_rate</code> and my plot therefore did not show any missings, I wondered why missings were explicitly mentioned in the task. The following code shows that there are missing unemployment data for the regions in <code>geospatial_data</code> if one does not account for the fact, that <code>district_unemployment</code> contains 17 districts for which there are 2 observations per district. One with missing values and one with unemployment data.</p>
+<pre class="r"><code>duplicates &lt;- district_unemployment %&gt;% 
+  filter(region %in% duplicate_region) %&gt;% 
+  arrange(region, unemployed)
+duplicates</code></pre>
+<pre><code>## # A tibble: 34 x 4
+##    destatis_code region                     unemployed unemployment_rate
+##    &lt;chr&gt;         &lt;chr&gt;                           &lt;dbl&gt;             &lt;dbl&gt;
+##  1 15081         altmarkkreis salzwedel           2908               6.4
+##  2 15370         altmarkkreis salzwedel             NA              NA  
+##  3 14625         bautzen                          7872               5  
+##  4 14272         bautzen                            NA              NA  
+##  5 15084         burgenlandkreis                  6043               6.5
+##  6 15256         burgenlandkreis                    NA              NA  
+##  7 14511         chemnitz, kreisfreie stadt       8099               6.5
+##  8 14161         chemnitz, kreisfreie stadt         NA              NA  
+##  9 14612         dresden, kreisfreie stadt       16763               5.6
+## 10 14262         dresden, kreisfreie stadt          NA              NA  
+## # … with 24 more rows</code></pre>
+<p>If the 17 observations with missing values are not dealt with like I did in line 300 ff, left_joining <code>geospatial_data</code> and <code>district_unemployment</code> results in a data frame with more observations than <code>geospatial_data</code> because of the duplicate key in <code>district_unemployment</code>. This data frame would then contain missing unemployment data for the 17 districts with duplicate values in <code>district_unemployment</code>, this case is illustrated with <code>data_joined_old</code> that I saved earlier for the purpose of this illustration.</p>
+<pre class="r"><code>data_joined %&gt;% 
+  select(unemployment_rate) %&gt;% 
+  is.na() %&gt;% 
+  sum()</code></pre>
+<pre><code>## [1] 0</code></pre>
+<pre class="r"><code>data_joined_old %&gt;% 
+  select(unemployment_rate) %&gt;% 
+  is.na() %&gt;% 
+  sum()</code></pre>
+<pre><code>## [1] 27137</code></pre>
+<p>The following map has those districts containing missing values (and also non-missing values) in <code>data_joined_old</code> highlighted in orange.</p>
+<pre class="r"><code>data_joined_old %&gt;% 
+  mutate(duplicate = id %in% duplicate_region) %&gt;% 
+  ggplot(aes(x = long, 
+             y = lat, 
+             group = as.factor(district),
+             fill = duplicate)) +
+  geom_polygon(color = &quot;white&quot;, 
+               size = 0.15) +
+  theme_void() +
+  scale_fill_discrete(type = list(c(&quot;gray26&quot;, &quot;orangered2&quot;)),
+                      guide = guide_legend(label.position = &quot;bottom&quot;,
+                                           title.position = &quot;top&quot;,
+                                           keywidth = 3)) +
+  theme(legend.position = &quot;bottom&quot;)</code></pre>
+<p><img src="/post/2020-12-29-visualizing-geospatial-data-with-a-choropleth-map/index.de_files/figure-html/unnamed-chunk-18-1.png" width="672" style="display: block; margin: auto auto auto 0;" /></p>
+<p>Plotting the choropleth with unemployment rates would then lead to a graph with missing values being indicated in the map in grey but somehow not for all of the regions where there exist both missing and available unemployment data (Why this is the case, I was not able to figure out).</p>
+<pre class="r"><code>data_joined_old %&gt;% 
+  ggplot(aes(x = long, 
+             y = lat, 
+             group = as.factor(district),
+             fill = unemployment_rate)) +
+  geom_polygon(color = &quot;white&quot;, 
+               size = 0.15) +
+  theme_void() +
+  scale_fill_gradient(low = &quot;dodgerblue4&quot;, 
+                      high = &quot;orangered&quot;,
+                      n.breaks = 5,
+                      name = &quot;Unemployment Rate (in %)&quot;,
+                      guide = guide_legend(label.position = &quot;bottom&quot;,
+                                           title.position = &quot;top&quot;,
+                                           keywidth = 3),
+                      # district areas with missing values in unemployment_rate are colored in grey
+                      na.value = &quot;gray71&quot;) +
+  theme(legend.position = &quot;bottom&quot;,
+        plot.title = element_text(size = 22),
+        plot.subtitle = element_text(size = 16)) +
+  labs(title = &quot;Regional Unemployment in Germany&quot;,
+       subtitle = &quot;Unemployment Rate per District&quot;)</code></pre>
+<p><img src="/post/2020-12-29-visualizing-geospatial-data-with-a-choropleth-map/index.de_files/figure-html/unnamed-chunk-19-1.png" width="672" style="display: block; margin: auto auto auto 0;" /></p>
+<div id="conclusion" class="section level2">
+<h2>Conclusion</h2>
+<p>If one uses all available unemployment data there is unemployment data for all regions in <code>geospatial_data</code> and therefore no missing unemployment rates to be displayed in the final map.</p>
+</div>
+</div>
