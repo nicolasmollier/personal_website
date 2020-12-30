@@ -16,6 +16,7 @@ interests:
 - Statistik
 - Machine Learning
 - Marketing Analytics
+- Data Visualization
 organizations:
 - name: Universität Tübingen
   url: ""
@@ -40,4 +41,4 @@ user_groups:
 - Visitors
 ---
 
-Nicolas Mollier studiert Data Science im Master an der Universität Tübingen. 
+Ich studiere Data Science im Master an der Universität Tübingen. Seit dem WS 2020/2021 bin ich Anwärter bei der studentischen Unternehmensberatung InOne Consult e.V.
