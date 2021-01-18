@@ -1,0 +1,275 @@
+---
+title: 'Repeated Actions in R: Computational Efficiency'
+author: Nicolas Mollier
+date: '2021-01-18'
+slug: repeated-actions-in-r-computational-efficiency
+categories: []
+tags:
+  - Vectorization
+  - Repetition
+  - Efficiency
+  - Computation
+subtitle: ''
+summary: ''
+authors: []
+lastmod: '2021-01-18T09:54:47+01:00'
+featured: no
+image:
+  caption: ''
+  focal_point: ''
+  preview_only: no
+projects: []
+output: 
+  html_document:
+    toc: true
+---
+
+
+This analysis was part of an assignment in the course Data Science Project Management of the Master Program Data Science in Business and Economics. It deals with repeated actions in R and computational efficiency. It illustrates the computational advantages of using vectorization.
+
+
+```{r echo = FALSE}
+rm(list = ls())
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Root directory and Packages
+
+```{r Set Path to Data}
+knitr::opts_knit$set(root.dir = "/home/nicolas/Desktop/Uni/WiSe20_21/DS400_DS_Project_Management/Assignments/Assignment_3")
+
+setwd("/home/nicolas/Desktop/Uni/WiSe20_21/DS400_DS_Project_Management/Assignments/Assignment_3")
+
+
+```
+
+```{r Packages, message = FALSE, warning = FALSE}
+
+if (!require("microbenchmark")) {
+  install.packages("microbenchmark")
+}
+if (!require("knitr")) {
+  install.packages("knitr")
+}
+if (!require("RSQLite")) {
+  install.packages("RSQLite")
+}
+
+library(microbenchmark)
+library(tidyverse)
+library(knitr)
+library(DBI)
+library(RSQLite)
+```
+
+
+# 1. Repaeted Operations in R
+
+First, I create two vectors names `vec1` and `vec2` that each contain 50000 randomly drawn integers between 1 and 100. A seed is used to make the analysis reproducible.
+
+```{r}
+set.seed(1234)
+
+vec1 <- sample.int(100, 50000, replace = TRUE)
+vec2 <- sample.int(100, 50000, replace = TRUE)
+```
+
+In the body of the function `step_0` I use the for loop that is provided in the assignment task. The reason for putting the loop and later on every incremental improvement thereof in a function is that I want to be able to compare every step by using `microbenchmark::microbenchmark()`. Since I will have to use every possible solution to computing the absolute difference as an argument inside `microbenchmark()`, this is way cleaner when using functions even though defining a function in every step might seem excessive.
+
+```{r Provided Loop}
+
+step_0 <- function(vec1, vec2) {
+  absoluteDifferences <- NULL
+  
+  for (i in 1:length(vec1)) {
+    # This part of the body will be changed and improved in the coming steps
+    absoluteDifferences <- c(absoluteDifferences, sqrt((vec1[i] - vec2[i])^2))
+  }
+  return(absoluteDifferences)
+}
+
+# apply step_0 on vec1 and vec2 and save reult in absoluteDifferences_0
+absoluteDifferences_0 <- step_0(vec1, vec2)
+
+# measure the time
+time_0 <- system.time(step_0(vec1, vec2)) 
+```
+
+The provided for loop computes the absolute element-wise differences of `vec1` and `vec2` in `r paste(round(time_0["elapsed"], digits = 4), "seconds")`. In the following steps we improve this time.
+
+## Step by Step Improvement that finally results in using a vectorized function
+
+A first minor improvement is to use `abs` on every element pair of `vec1` and `vec2` separately instead of squaring the difference and then taking the square root.
+
+
+```{r step 1}
+step_1 <- function(vec1, vec2) {
+  absoluteDifferences <- NULL
+  
+  for (i in 1:length(vec1)) {
+    # use the abs function on the respective element pair of vec1 and vec2 in the loop
+    absoluteDifferences <- c(absoluteDifferences, abs(vec1[i] - vec2[i]))
+  }
+  return(absoluteDifferences)
+}
+
+absoluteDifferences_1 <- step_1(vec1, vec2)
+time_1 <- system.time(step_1(vec1, vec2))
+```
+
+This improves the execution time to `r paste(round(time_1["elapsed"], digits = 4), "seconds")`. 
+
+Another improvement we can make is to stop using the `c()` function. Using `c()` inside the loop means that in every of the 50000 iterations of the loop R has to create a new object `absoluteDifferences` and copy the content of the "old" version of `absoluteDifferences`. This is very inefficient. 
+
+```{r step 2}
+step_2 <- function(vec1, vec2) {
+  absoluteDifferences <- NULL
+  
+  for (i in 1:length(vec1)) {
+    # use the abs function on the respective element pair of vec1 and vec2 in the loop
+    # but without using c()
+    absoluteDifferences[i] <- abs(vec1[i] - vec2[i])
+  }
+  return(absoluteDifferences)
+}
+
+absoluteDifferences_2 <- step_2(vec1, vec2)
+
+time_2 <- system.time(step_2(vec1, vec2))
+```
+
+In `step_2` the absolute differences are still computed element-wise but getting rid of `c()` already reduces the time of computation to `r paste(round(time_2["elapsed"], digits = 4), "seconds")`.
+
+`step_3` uses the same body in the for loop as `step_2`. The improvement in this step is to create the vector that is supposed to hold the computed absolute differences with the correct required length instead of just initiating the vector by assigning `NULL`. This has the advantage, that R does not have to increase the length of `absoluteDifferences` in every iteration. Instead R just needs to assign the computed element-wise absolute difference to the already existing place.
+
+```{r step 3}
+step_3 <- function(vec1, vec2) {
+  # So far we created the vector to hold the computed absolute differences
+  # by assigning NULL to absoluteDifferences
+  # Now, I create the solution vector already with the correct length.
+  absoluteDifferences <- vector(mode = "numeric", length = length(vec1))
+  
+  for (i in 1:length(vec1)) {
+    # same as in step 2
+    absoluteDifferences[i] <- abs(vec1[i] - vec2[i])
+  }
+  return(absoluteDifferences)
+}
+
+absoluteDifferences_3 <- step_3(vec1, vec2)
+
+time_3 <- system.time(step_3(vec1, vec2))
+```
+
+`step _3` decreases the time by `r paste(round(abs((time_3[3] - time_2[3]) / time_2[3]) * 100, digits = 2), "%")` to `r paste(round(time_3["elapsed"], digits = 4), "seconds")`.
+
+In the final step we stop using a for loop altogether. Up to this point we already managed to reduce the computation time by `r paste(round(abs((time_3[3] - time_0[3]) / time_0[3]) * 100, digits = 2), "%")` from `r paste(round(time_0["elapsed"], digits = 4), "seconds")` to `r paste(round(time_3["elapsed"], digits = 4), "seconds")` while still using a for loop. But since R is slow at looping, in the final step we use the vectorized function `abs()` that we used element-wise in every iteration so far. Now, we will take full advantage of that function by using it vector-wise on `vec1` and `vec2`.
+
+```{r step 4}
+
+step_4 <- function(vec1, vec2) {
+  absoluteDifferences <- NULL
+  # use abs vector-wise on vec1 and vec2 without a loop 
+  absoluteDifferences <- abs(vec1 - vec2)
+  return(absoluteDifferences)
+}
+
+absoluteDifferences_4 <- step_4(vec1, vec2)
+
+time_4 <- system.time(step_4(vec1, vec2))
+```
+
+The final time of our computation is `r paste(round(time_4[3], digits = 4), "seconds")` which is again a huge relative improvement of `r paste(round(abs((time_4[3] - time_3[3]) / time_3[3]) * 100, digits = 2), "%")` compared to `step_3`.
+
+We could also use `sqrt()` in combination with `^2` in the same way as ẁe used `abs()` in `step_4`. But this is not quite as fast as using `abs()` as we can see below.
+
+```{r step 4 alternative}
+
+step_4_alt <- function(vec1, vec2) {
+  absoluteDifferences <- NULL
+  absoluteDifferences <- sqrt((vec1 - vec2)^2)
+  return(absoluteDifferences)
+}
+
+absoluteDifferences_4_alt <- step_4_alt(vec1, vec2)
+
+time_4_alt <- system.time(step_4_alt(vec1, vec2))
+```
+
+Using `sqrt()` in combination with `^2` in the same way as we used `abs()` in `step_4`, results in a time of `r paste(round(time_4_alt[3], 8), "seconds")` whereas using `abs()` results in `r paste(round(time_4[3], 8), "seconds")`
+
+## map variant
+
+An alternative to using a for loop is the `map` function. Here we use `map2_dbl` which iterates over two arguments simultaneously, here `vec1` and `vec2`, and outputs a vector of type `double`.
+
+```{r map variant}
+abs_diff <- function(x, y){
+  sqrt((x - y)^2)
+}
+
+time_map <- system.time(map2_dbl(vec1, vec2, .f = abs_diff))
+```
+
+Using `map2_dbl` results in a time of `r paste(round(time_map[3], digits = 4), "seconds")` which is in between the results of `step_1` and `step_2`.
+
+## Comparison of the proposed improvements 
+
+Finally, we compare the different incremental improvements by using `microbenchmark`. This is a more precise way of taking times and has the advantage that we can easily repeat the computations multiple times (here 10 times) in order to get robust results.
+
+```{r}
+comparison <- microbenchmark(step_0(vec1, vec2),
+                             step_1(vec1, vec2),
+                             step_2(vec1, vec2),
+                             step_3(vec1, vec2),
+                             step_4(vec1, vec2),
+                             times = 10) 
+
+# create a summary of the overall 50 time measures (5 steps each 10 times)
+comparison_df <- comparison %>% 
+  summary() %>% 
+  rename(step = expr) %>% 
+  # remove the suffix (vec1, vec2) from the values in the step column
+  mutate(step = str_remove(step, pattern = "\\(vec1, vec2\\)")) 
+
+# display the final summary table
+comparison_df %>% 
+  knitr::kable(caption = "Execution times measured in nanosecond")
+
+```
+
+Note that the resulting times are measured in nanoseconds.
+
+In the plot below, the 10 times measured for each step are displayed to visualize how substantial the improvements are and how inefficient the solution in `step _0` really was.
+
+```{r}
+# create a data frame that holds the raw time measures 
+times_raw <- comparison %>% 
+  as.data.frame() %>% 
+  rename(step = expr) %>% 
+  mutate(step = str_remove(step, pattern = "\\(vec1, vec2\\)")) %>%
+  # change unit from nanoseconds to seconds
+  mutate(time = time / 1e9) 
+
+times_raw %>% 
+  ggplot(aes(x = step, y = time)) +
+  geom_point(alpha = 0.3) +
+  ylab("time (in seconds)") +
+  labs(title = "Comparison of step 0, 1, 2, 3 and 4",
+       subtitle = "Ten time measures for each step")
+  
+```
+
+The comparison of step 2, 3 and 4 is visualized below.
+
+```{r}
+times_raw %>% 
+  filter(step %in% c("step_2", "step_3", "step_4")) %>% 
+  ggplot(aes(step, time)) +
+  geom_point(alpha = 0.3) +
+  ylab("time (in seconds)") +
+  labs(title = "Comparison of step 2, 3 and 4",
+       subtitle = "Ten time measures for each step")
+```

@@ -1,0 +1,606 @@
+---
+title: 'Working with Data Bases in R: SQL'
+author: Nicolas Mollier
+date: '2021-01-18'
+slug: working-with-data-bases-in-r-sql
+categories: []
+tags:
+  - SQL
+  - Query
+  - Database
+subtitle: ''
+summary: ''
+authors: []
+lastmod: '2021-01-18T10:02:38+01:00'
+featured: no
+image:
+  caption: ''
+  focal_point: ''
+  preview_only: no
+projects: []
+output:
+  html:
+    toc: true
+---
+
+<link href="/rmarkdown-libs/anchor-sections/anchor-sections.css" rel="stylesheet" />
+<script src="/rmarkdown-libs/anchor-sections/anchor-sections.js"></script>
+
+
+<p>This analysis was part of an assignment in the course Data Science Project Management of the Master Program Data Science in Business and Economics at the University of Tuebingen. It deals with how to establish a connection to a SQL database from within R, writing SQL queries and loading the data into our local memory.</p>
+<div id="root-directory-and-packages" class="section level1">
+<h1>Root directory and Packages</h1>
+<pre class="r"><code>knitr::opts_knit$set(root.dir = &quot;/home/nicolas/Desktop/Uni/WiSe20_21/DS400_DS_Project_Management/Assignments/Assignment_3&quot;)
+
+setwd(&quot;/home/nicolas/Desktop/Uni/WiSe20_21/DS400_DS_Project_Management/Assignments/Assignment_3&quot;)</code></pre>
+<pre class="r"><code>if (!require(&quot;microbenchmark&quot;)) {
+  install.packages(&quot;microbenchmark&quot;)
+}
+if (!require(&quot;knitr&quot;)) {
+  install.packages(&quot;knitr&quot;)
+}
+if (!require(&quot;RSQLite&quot;)) {
+  install.packages(&quot;RSQLite&quot;)
+}
+
+library(microbenchmark)
+library(tidyverse)
+library(knitr)
+library(DBI)
+library(RSQLite)</code></pre>
+</div>
+<div id="sqlite-database-management---soccer-data" class="section level1">
+<h1>2. SQLite database management - soccer data</h1>
+<p>In a first step I unzip <code>soccer.zip</code> in my working directory.</p>
+<pre class="r"><code>unzip(&quot;soccer.zip&quot;)</code></pre>
+<p>I create a connection to the database <code>soccer.sqlite</code>.</p>
+<pre class="r"><code>con &lt;- dbConnect(RSQLite::SQLite(),
+                 dbname = &quot;soccer.sqlite&quot;)</code></pre>
+<p>I load 30 rows of <code>Match</code> to get a first impression of the table.</p>
+<pre class="r"><code>match_30 &lt;- dbGetQuery(con, &quot;SELECT * FROM Match LIMIT 30&quot;)
+glimpse(match_30)</code></pre>
+<pre><code>## Rows: 30
+## Columns: 31
+## $ id             &lt;int&gt; 492473, 492474, 492475, 492476, 492477, 492478, 492479…
+## $ country_id     &lt;int&gt; 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
+## $ league_id      &lt;int&gt; 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
+## $ season         &lt;chr&gt; &quot;2008/2009&quot;, &quot;2008/2009&quot;, &quot;2008/2009&quot;, &quot;2008/2009&quot;, &quot;2…
+## $ date           &lt;chr&gt; &quot;2008-08-17 00:00:00&quot;, &quot;2008-08-16 00:00:00&quot;, &quot;2008-08…
+## $ home_team_id   &lt;int&gt; 9987, 10000, 9984, 9991, 7947, 8203, 9999, 4049, 10001…
+## $ away_team_id   &lt;int&gt; 9993, 9994, 8635, 9998, 9985, 8342, 8571, 9996, 9986, …
+## $ home_team_goal &lt;int&gt; 1, 0, 0, 5, 1, 1, 2, 1, 1, 4, 1, 0, 0, 2, 1, 0, 1, 1, …
+## $ away_team_goal &lt;int&gt; 1, 0, 3, 0, 3, 1, 2, 2, 0, 1, 2, 2, 0, 2, 2, 1, 3, 3, …
+## $ home_player_1  &lt;int&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA…
+## $ home_player_2  &lt;int&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA…
+## $ home_player_3  &lt;int&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA…
+## $ home_player_4  &lt;int&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA…
+## $ home_player_5  &lt;int&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA…
+## $ home_player_6  &lt;int&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA…
+## $ home_player_7  &lt;int&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA…
+## $ home_player_8  &lt;int&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA…
+## $ home_player_9  &lt;int&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA…
+## $ home_player_10 &lt;int&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA…
+## $ home_player_11 &lt;int&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA…
+## $ away_player_1  &lt;int&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA…
+## $ away_player_2  &lt;int&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA…
+## $ away_player_3  &lt;int&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA…
+## $ away_player_4  &lt;int&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA…
+## $ away_player_5  &lt;int&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA…
+## $ away_player_6  &lt;int&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA…
+## $ away_player_7  &lt;int&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA…
+## $ away_player_8  &lt;int&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA…
+## $ away_player_9  &lt;int&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA…
+## $ away_player_10 &lt;int&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA…
+## $ away_player_11 &lt;int&gt; NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA…</code></pre>
+<div id="a-team-ids-of-fc-bayern-munich-and-borussia-dortmund" class="section level2">
+<h2>a) Team IDs of FC Bayern Munich and Borussia Dortmund</h2>
+<p>In a SQL query I select the two columns <code>id</code> and <code>team_long_name</code> from the <code>Team</code> table while restricting the returned cases to those where the variable <code>team_long_name</code> takes the values “FC Bayern Munich” or "Borussia Dortmund.</p>
+<pre class="r"><code>team_id_fcb_bvb &lt;- dbGetQuery(con, &quot;SELECT id, team_long_name
+                                    FROM Team 
+                                    WHERE team_long_name IN (&#39;FC Bayern Munich&#39;, &#39;Borussia Dortmund&#39;)&quot;)
+team_id_fcb_bvb %&gt;% 
+  knitr::kable(align = &quot;l&quot;)</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">id</th>
+<th align="left">team_long_name</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">9823</td>
+<td align="left">FC Bayern Munich</td>
+</tr>
+<tr class="even">
+<td align="left">9789</td>
+<td align="left">Borussia Dortmund</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="b-match-id-of-the-match-in-munich-between-fc-bayern-munich-and-borussia-dortmund-in-the-season-of-20152016" class="section level2">
+<h2>b) Match ID of the match in Munich between FC Bayern Munich and Borussia Dortmund in the season of 2015/2016</h2>
+<p>To get the match id that we are looking for, I have to specify in the WHERE clause the two teams and the season. Since I want to use the results from a), I have to use <code>paste()</code> in order to be able to use the team ids that we have already queried above. I also filter for those matches that where in 2015.</p>
+<pre class="r"><code>match_fcb_bvb &lt;- dbGetQuery(con, 
+                            paste(&quot;SELECT 
+                                      Match.id AS match_id, home_team_id, away_team_id, date
+                                   FROM Match
+                                   WHERE 
+                                      home_team_id =&quot;, 
+                                      # use the id of FCB
+                                      filter(team_id_fcb_bvb, team_long_name == &quot;FC Bayern Munich&quot;)[&quot;id&quot;],
+                                      &quot;AND away_team_id =&quot;, 
+                                      # use the id of BVB
+                                      filter(team_id_fcb_bvb, team_long_name == &quot;Borussia Dortmund&quot;)[&quot;id&quot;],
+                                      # filter for those matches that where in 2015
+                                      &quot;AND date LIKE &#39;2015%&#39;&quot;
+                            )
+)
+
+match_id &lt;- match_fcb_bvb %&gt;% 
+  select(match_id) %&gt;% 
+  as_vector()</code></pre>
+<p>The match id is 2002155.</p>
+</div>
+<div id="c-date-of-the-match-between-fc-bayern-munich-and-borussia-dortmund-in-the-season-20152016" class="section level2">
+<h2>c) Date of the match between FC Bayern Munich and Borussia Dortmund in the season 2015/2016</h2>
+<p>In the query for b) I already selected the column <code>date</code>. Therefore, I can use <code>match_fcb_bvb</code> here. The <code>date</code> column contains the date and the time. Since we are only interested, I remove the time component by using a regular expression.</p>
+<pre class="r"><code>match_fcb_bvb &lt;- match_fcb_bvb %&gt;% 
+  mutate(date = str_remove(date, &quot;\\s\\d{2}:\\d{2}:\\d{2}&quot;))
+
+match_fcb_bvb %&gt;% 
+  knitr::kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="right">match_id</th>
+<th align="right">home_team_id</th>
+<th align="right">away_team_id</th>
+<th align="left">date</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="right">2002155</td>
+<td align="right">9823</td>
+<td align="right">9789</td>
+<td align="left">2015-10-04</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code># date of the match
+match_date &lt;- match_fcb_bvb %&gt;% 
+  select(date) %&gt;% 
+  as_vector() </code></pre>
+<p>The match took place on 2015-10-04.</p>
+</div>
+<div id="alternative-to-solution-a-b-c" class="section level2">
+<h2>Alternative to solution a), b), c)</h2>
+<p>The tasks in a), b), c) could alternatively be solved with the following query that entails two left joins of the tables <code>Match</code> and <code>Team</code>.</p>
+<pre class="r"><code>solution_abc &lt;- dbGetQuery(con, &quot;SELECT 
+                                    match.id, 
+                                    home.team_long_name AS home_team_name,
+                                    away.team_long_name AS away_team_name, date
+                                 FROM Match AS match
+                                 LEFT JOIN Team AS home
+                                    ON match.home_team_id = home.id
+                                 LEFT JOIN Team AS away
+                                    ON away_team_id = away.id
+                                 WHERE 
+                                    home_team_name = &#39;FC Bayern Munich&#39; AND 
+                                    away_team_name = &#39;Borussia Dortmund&#39; AND
+                                    season = &#39;2015/2016&#39;&quot;)
+solution_abc %&gt;% 
+  glimpse()</code></pre>
+<pre><code>## Rows: 1
+## Columns: 4
+## $ id             &lt;int&gt; 2002155
+## $ home_team_name &lt;chr&gt; &quot;FC Bayern Munich&quot;
+## $ away_team_name &lt;chr&gt; &quot;Borussia Dortmund&quot;
+## $ date           &lt;chr&gt; &quot;2015-10-04 00:00:00&quot;</code></pre>
+</div>
+<div id="d-home-team-players" class="section level2">
+<h2>d) Home team players</h2>
+<p>Actually, I wanted to use the query that leads to <code>match_df2</code>, amend it with UNPIVOT and then join the resulting table with the <code>Player</code> table. UNPIVOT was intended to gather the 11 home_player columns into rows while creating a column containing the player ids. This would have enabled the final join with <code>Player</code> on id. Unfortunately UNPIVOT did not work. Therefore, I performed the gathering with <code>dplyr::gather</code> after having created <code>match_df2</code> per SQL query.</p>
+<pre class="r"><code># the two joins with the Home table give us the team names on which we filter in the WHERE clause
+match_df2 &lt;- dbGetQuery(con, 
+                        &quot;SELECT 
+                            match.*,
+                            home.team_long_name AS home_team_name,
+                            away.team_long_name AS away_team_name
+                         FROM Match AS match
+                         LEFT JOIN Team AS home 
+                            ON match.home_team_id = home.id
+                        LEFT JOIN Team AS away
+                            ON away_team_id = away.id
+                        WHERE
+                           home_team_name = &#39;FC Bayern Munich&#39; AND
+                           away_team_name = &#39;Borussia Dortmund&#39; AND
+                           season = &#39;2015/2016&#39;&quot;)
+
+match_df2 %&gt;% 
+  glimpse()</code></pre>
+<pre><code>## Rows: 1
+## Columns: 33
+## $ id             &lt;int&gt; 2002155
+## $ country_id     &lt;int&gt; 7809
+## $ league_id      &lt;int&gt; 7809
+## $ season         &lt;chr&gt; &quot;2015/2016&quot;
+## $ date           &lt;chr&gt; &quot;2015-10-04 00:00:00&quot;
+## $ home_team_id   &lt;int&gt; 9823
+## $ away_team_id   &lt;int&gt; 9789
+## $ home_team_goal &lt;int&gt; 5
+## $ away_team_goal &lt;int&gt; 1
+## $ home_player_1  &lt;int&gt; 27299
+## $ home_player_2  &lt;int&gt; 30894
+## $ home_player_3  &lt;int&gt; 37410
+## $ home_player_4  &lt;int&gt; 36183
+## $ home_player_5  &lt;int&gt; 121633
+## $ home_player_6  &lt;int&gt; 30889
+## $ home_player_7  &lt;int&gt; 172949
+## $ home_player_8  &lt;int&gt; 116772
+## $ home_player_9  &lt;int&gt; 177714
+## $ home_player_10 &lt;int&gt; 156726
+## $ home_player_11 &lt;int&gt; 93447
+## $ away_player_1  &lt;int&gt; 112978
+## $ away_player_2  &lt;int&gt; 13518
+## $ away_player_3  &lt;int&gt; 39455
+## $ away_player_4  &lt;int&gt; 36388
+## $ away_player_5  &lt;int&gt; 27427
+## $ away_player_6  &lt;int&gt; 521421
+## $ away_player_7  &lt;int&gt; 37374
+## $ away_player_8  &lt;int&gt; 178818
+## $ away_player_9  &lt;int&gt; 144993
+## $ away_player_10 &lt;int&gt; 150565
+## $ away_player_11 &lt;int&gt; 73167
+## $ home_team_name &lt;chr&gt; &quot;FC Bayern Munich&quot;
+## $ away_team_name &lt;chr&gt; &quot;Borussia Dortmund&quot;</code></pre>
+<pre class="r"><code># transform match_df2 from wide to long 
+# gather the 11 home_player columns into a column called &quot;home_player&quot; and a
+# column containing the ids called &quot;home_player_id&quot;
+match_df2_gathered &lt;- match_df2 %&gt;%
+               gather(key = &quot;home_player&quot;,
+                     value = &quot;home_player_id&quot;,
+                     home_player_1 : home_player_11) %&gt;% 
+               # remove the players from BVB, date, league_id and country_id etc.
+               # since they are of no concern here
+               select(-(away_player_1 : away_player_11), 
+                      -date,
+                      -league_id,
+                      -country_id,
+                      -home_team_goal,
+                      -away_team_goal)
+match_df2_gathered %&gt;% 
+  knitr::kable()</code></pre>
+<table>
+<colgroup>
+<col width="7%" />
+<col width="9%" />
+<col width="11%" />
+<col width="11%" />
+<col width="15%" />
+<col width="16%" />
+<col width="13%" />
+<col width="13%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="right">id</th>
+<th align="left">season</th>
+<th align="right">home_team_id</th>
+<th align="right">away_team_id</th>
+<th align="left">home_team_name</th>
+<th align="left">away_team_name</th>
+<th align="left">home_player</th>
+<th align="right">home_player_id</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="right">2002155</td>
+<td align="left">2015/2016</td>
+<td align="right">9823</td>
+<td align="right">9789</td>
+<td align="left">FC Bayern Munich</td>
+<td align="left">Borussia Dortmund</td>
+<td align="left">home_player_1</td>
+<td align="right">27299</td>
+</tr>
+<tr class="even">
+<td align="right">2002155</td>
+<td align="left">2015/2016</td>
+<td align="right">9823</td>
+<td align="right">9789</td>
+<td align="left">FC Bayern Munich</td>
+<td align="left">Borussia Dortmund</td>
+<td align="left">home_player_2</td>
+<td align="right">30894</td>
+</tr>
+<tr class="odd">
+<td align="right">2002155</td>
+<td align="left">2015/2016</td>
+<td align="right">9823</td>
+<td align="right">9789</td>
+<td align="left">FC Bayern Munich</td>
+<td align="left">Borussia Dortmund</td>
+<td align="left">home_player_3</td>
+<td align="right">37410</td>
+</tr>
+<tr class="even">
+<td align="right">2002155</td>
+<td align="left">2015/2016</td>
+<td align="right">9823</td>
+<td align="right">9789</td>
+<td align="left">FC Bayern Munich</td>
+<td align="left">Borussia Dortmund</td>
+<td align="left">home_player_4</td>
+<td align="right">36183</td>
+</tr>
+<tr class="odd">
+<td align="right">2002155</td>
+<td align="left">2015/2016</td>
+<td align="right">9823</td>
+<td align="right">9789</td>
+<td align="left">FC Bayern Munich</td>
+<td align="left">Borussia Dortmund</td>
+<td align="left">home_player_5</td>
+<td align="right">121633</td>
+</tr>
+<tr class="even">
+<td align="right">2002155</td>
+<td align="left">2015/2016</td>
+<td align="right">9823</td>
+<td align="right">9789</td>
+<td align="left">FC Bayern Munich</td>
+<td align="left">Borussia Dortmund</td>
+<td align="left">home_player_6</td>
+<td align="right">30889</td>
+</tr>
+<tr class="odd">
+<td align="right">2002155</td>
+<td align="left">2015/2016</td>
+<td align="right">9823</td>
+<td align="right">9789</td>
+<td align="left">FC Bayern Munich</td>
+<td align="left">Borussia Dortmund</td>
+<td align="left">home_player_7</td>
+<td align="right">172949</td>
+</tr>
+<tr class="even">
+<td align="right">2002155</td>
+<td align="left">2015/2016</td>
+<td align="right">9823</td>
+<td align="right">9789</td>
+<td align="left">FC Bayern Munich</td>
+<td align="left">Borussia Dortmund</td>
+<td align="left">home_player_8</td>
+<td align="right">116772</td>
+</tr>
+<tr class="odd">
+<td align="right">2002155</td>
+<td align="left">2015/2016</td>
+<td align="right">9823</td>
+<td align="right">9789</td>
+<td align="left">FC Bayern Munich</td>
+<td align="left">Borussia Dortmund</td>
+<td align="left">home_player_9</td>
+<td align="right">177714</td>
+</tr>
+<tr class="even">
+<td align="right">2002155</td>
+<td align="left">2015/2016</td>
+<td align="right">9823</td>
+<td align="right">9789</td>
+<td align="left">FC Bayern Munich</td>
+<td align="left">Borussia Dortmund</td>
+<td align="left">home_player_10</td>
+<td align="right">156726</td>
+</tr>
+<tr class="odd">
+<td align="right">2002155</td>
+<td align="left">2015/2016</td>
+<td align="right">9823</td>
+<td align="right">9789</td>
+<td align="left">FC Bayern Munich</td>
+<td align="left">Borussia Dortmund</td>
+<td align="left">home_player_11</td>
+<td align="right">93447</td>
+</tr>
+</tbody>
+</table>
+<p>Next, I load the <code>Player</code> table in R as <code>players</code> and perform the semi join with <code>match_df2_gathered</code> in order to get the player names who played in the match for FC Bayern Munich. Those players are saved in a data frame called <code>match_players</code>.</p>
+<pre class="r"><code>players &lt;- dbGetQuery(con, paste(&quot;SELECT * 
+                                  FROM Player&quot;))
+
+# only keep those players that played in that game
+match_players &lt;- players %&gt;%
+  semi_join(match_df2_gathered,
+             by = c(&quot;id&quot; = &quot;home_player_id&quot;))
+
+match_players %&gt;% 
+  knitr::kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="right">id</th>
+<th align="left">player_name</th>
+<th align="left">birthday</th>
+<th align="right">height</th>
+<th align="right">weight</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="right">121633</td>
+<td align="left">David Alaba</td>
+<td align="left">1992-06-24 00:00:00</td>
+<td align="right">180.34</td>
+<td align="right">76</td>
+</tr>
+<tr class="even">
+<td align="right">156726</td>
+<td align="left">Douglas Costa</td>
+<td align="left">1990-09-14 00:00:00</td>
+<td align="right">172.72</td>
+<td align="right">65</td>
+</tr>
+<tr class="odd">
+<td align="right">37410</td>
+<td align="left">Javier Martinez</td>
+<td align="left">1988-09-02 00:00:00</td>
+<td align="right">190.50</td>
+<td align="right">81</td>
+</tr>
+<tr class="even">
+<td align="right">36183</td>
+<td align="left">Jerome Boateng</td>
+<td align="left">1988-09-03 00:00:00</td>
+<td align="right">193.04</td>
+<td align="right">90</td>
+</tr>
+<tr class="odd">
+<td align="right">27299</td>
+<td align="left">Manuel Neuer</td>
+<td align="left">1986-03-27 00:00:00</td>
+<td align="right">193.04</td>
+<td align="right">92</td>
+</tr>
+<tr class="even">
+<td align="right">177714</td>
+<td align="left">Mario Goetze</td>
+<td align="left">1992-06-03 00:00:00</td>
+<td align="right">175.26</td>
+<td align="right">72</td>
+</tr>
+<tr class="odd">
+<td align="right">30894</td>
+<td align="left">Philipp Lahm</td>
+<td align="left">1983-11-11 00:00:00</td>
+<td align="right">170.18</td>
+<td align="right">66</td>
+</tr>
+<tr class="even">
+<td align="right">93447</td>
+<td align="left">Robert Lewandowski</td>
+<td align="left">1988-08-21 00:00:00</td>
+<td align="right">185.42</td>
+<td align="right">79</td>
+</tr>
+<tr class="odd">
+<td align="right">172949</td>
+<td align="left">Thiago Alcantara</td>
+<td align="left">1991-04-11 00:00:00</td>
+<td align="right">175.26</td>
+<td align="right">70</td>
+</tr>
+<tr class="even">
+<td align="right">116772</td>
+<td align="left">Thomas Mueller</td>
+<td align="left">1989-09-13 00:00:00</td>
+<td align="right">185.42</td>
+<td align="right">75</td>
+</tr>
+<tr class="odd">
+<td align="right">30889</td>
+<td align="left">Xabi Alonso</td>
+<td align="left">1981-11-25 00:00:00</td>
+<td align="right">182.88</td>
+<td align="right">80</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="e-average-height-and-weight-of-the-players" class="section level2">
+<h2>e) Average height and weight of the players</h2>
+<p>For this task we can use <code>match_players</code>.</p>
+<pre class="r"><code>avg_height_weight &lt;- match_players %&gt;%
+  select(height, weight) %&gt;% 
+  colMeans()</code></pre>
+<p>Taking the mean for the columns <code>height</code> and <code>weight</code> results in a mean weight of 76.91 and a mean height of 182.19.</p>
+</div>
+<div id="f-different-leagues-represented-in-the-table-match" class="section level2">
+<h2>f) Different leagues represented in the table Match</h2>
+<p>Using the SELECT DISTINCT command in combination with a left join on league id, gives us the 10 distinct leagues from the table <code>League</code>.</p>
+<pre class="r"><code># get all leagues in the table Match
+# left join on League gives us the league names
+leagues &lt;- dbGetQuery(con, &quot;SELECT DISTINCT league_id, League.* 
+                            FROM Match
+                            LEFT JOIN League 
+                            ON Match.league_id = League.id&quot;) 
+leagues %&gt;% 
+  knitr::kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="right">league_id</th>
+<th align="right">id</th>
+<th align="right">country_id</th>
+<th align="left">name</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="right">1</td>
+<td align="right">1</td>
+<td align="right">1</td>
+<td align="left">Belgium Jupiler League</td>
+</tr>
+<tr class="even">
+<td align="right">1729</td>
+<td align="right">1729</td>
+<td align="right">1729</td>
+<td align="left">England Premier League</td>
+</tr>
+<tr class="odd">
+<td align="right">4769</td>
+<td align="right">4769</td>
+<td align="right">4769</td>
+<td align="left">France Ligue 1</td>
+</tr>
+<tr class="even">
+<td align="right">7809</td>
+<td align="right">7809</td>
+<td align="right">7809</td>
+<td align="left">Germany 1. Bundesliga</td>
+</tr>
+<tr class="odd">
+<td align="right">10257</td>
+<td align="right">10257</td>
+<td align="right">10257</td>
+<td align="left">Italy Serie A</td>
+</tr>
+<tr class="even">
+<td align="right">13274</td>
+<td align="right">13274</td>
+<td align="right">13274</td>
+<td align="left">Netherlands Eredivisie</td>
+</tr>
+<tr class="odd">
+<td align="right">17642</td>
+<td align="right">17642</td>
+<td align="right">17642</td>
+<td align="left">Portugal Liga ZON Sagres</td>
+</tr>
+<tr class="even">
+<td align="right">19694</td>
+<td align="right">19694</td>
+<td align="right">19694</td>
+<td align="left">Scotland Premier League</td>
+</tr>
+<tr class="odd">
+<td align="right">21518</td>
+<td align="right">21518</td>
+<td align="right">21518</td>
+<td align="left">Spain LIGA BBVA</td>
+</tr>
+<tr class="even">
+<td align="right">24558</td>
+<td align="right">24558</td>
+<td align="right">24558</td>
+<td align="left">Switzerland Super League</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>

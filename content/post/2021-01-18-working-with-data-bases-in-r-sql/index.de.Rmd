@@ -1,0 +1,271 @@
+---
+title: 'Working with Data Bases in R: SQL'
+author: Nicolas Mollier
+date: '2021-01-18'
+slug: working-with-data-bases-in-r-sql
+categories: []
+tags:
+  - SQL
+  - Query
+  - Database
+subtitle: ''
+summary: ''
+authors: []
+lastmod: '2021-01-18T10:02:38+01:00'
+featured: no
+image:
+  caption: ''
+  focal_point: ''
+  preview_only: no
+projects: []
+output:
+  html:
+    toc: true
+---
+
+This analysis was part of an assignment in the course Data Science Project Management of the Master Program Data Science in Business and Economics at the University of Tuebingen. It deals with how to establish a connection to a SQL database from within R, writing SQL queries and loading the data into our local memory.
+
+```{r echo = FALSE}
+rm(list = ls())
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Root directory and Packages
+
+```{r Set Path to Data}
+knitr::opts_knit$set(root.dir = "/home/nicolas/Desktop/Uni/WiSe20_21/DS400_DS_Project_Management/Assignments/Assignment_3")
+
+setwd("/home/nicolas/Desktop/Uni/WiSe20_21/DS400_DS_Project_Management/Assignments/Assignment_3")
+
+
+```
+
+```{r Packages, message = FALSE, warning = FALSE}
+
+if (!require("microbenchmark")) {
+  install.packages("microbenchmark")
+}
+if (!require("knitr")) {
+  install.packages("knitr")
+}
+if (!require("RSQLite")) {
+  install.packages("RSQLite")
+}
+
+library(microbenchmark)
+library(tidyverse)
+library(knitr)
+library(DBI)
+library(RSQLite)
+```
+
+# 2. SQLite database management - soccer data
+
+In a first step I unzip `soccer.zip` in my working directory.
+
+```{r}
+unzip("soccer.zip")
+```
+
+I create a connection to the database `soccer.sqlite`.
+
+```{r}
+con <- dbConnect(RSQLite::SQLite(),
+                 dbname = "soccer.sqlite")
+```
+
+I load 30 rows of `Match` to get a first impression of the table.
+
+```{r}
+match_30 <- dbGetQuery(con, "SELECT * FROM Match LIMIT 30")
+glimpse(match_30)
+```
+
+
+## a) Team IDs of FC Bayern Munich and Borussia Dortmund
+
+In a SQL query I select the two columns `id` and `team_long_name` from the `Team` table while restricting the returned cases to those where the variable `team_long_name` takes the values "FC Bayern Munich" or "Borussia Dortmund. 
+
+```{r}
+team_id_fcb_bvb <- dbGetQuery(con, "SELECT id, team_long_name
+                                    FROM Team 
+                                    WHERE team_long_name IN ('FC Bayern Munich', 'Borussia Dortmund')")
+team_id_fcb_bvb %>% 
+  knitr::kable(align = "l")
+
+```
+
+
+## b) Match ID of the match in Munich between FC Bayern Munich and Borussia Dortmund in the season of 2015/2016
+
+To get the match id that we are looking for, I have to specify in the WHERE clause the two teams and the season. Since I want to use the results from a), I have to use `paste()` in order to be able to use the team ids that we have already queried above. I also filter for those matches that where in 2015.
+
+```{r}
+match_fcb_bvb <- dbGetQuery(con, 
+                            paste("SELECT 
+                                      Match.id AS match_id, home_team_id, away_team_id, date
+                                   FROM Match
+                                   WHERE 
+                                      home_team_id =", 
+                                      # use the id of FCB
+                                      filter(team_id_fcb_bvb, team_long_name == "FC Bayern Munich")["id"],
+                                      "AND away_team_id =", 
+                                      # use the id of BVB
+                                      filter(team_id_fcb_bvb, team_long_name == "Borussia Dortmund")["id"],
+                                      # filter for those matches that where in 2015
+                                      "AND date LIKE '2015%'"
+                            )
+)
+
+match_id <- match_fcb_bvb %>% 
+  select(match_id) %>% 
+  as_vector()
+```
+
+The match id is `r match_id`.
+
+```{r include = FALSE}
+
+match_fcb_bvb <- dbGetQuery(con, "SELECT Match.id AS match_id, home_team_id, away_team_id, date
+                                  FROM Match
+                                  WHERE home_team_id = 9823 AND away_team_id = 9789 AND date LIKE '2015%'")
+match_id_fcb_bvb <- match_fcb_bvb %>% 
+  select(match_id) %>% 
+  as_vector()
+
+```
+
+
+## c) Date of the match between FC Bayern Munich and Borussia Dortmund in the season 2015/2016 
+
+In the query for b) I already selected the column `date`. Therefore, I can use `match_fcb_bvb` here. The `date` column contains the date and the time. Since we are only interested, I remove the time component by using a regular expression.
+
+```{r}
+match_fcb_bvb <- match_fcb_bvb %>% 
+  mutate(date = str_remove(date, "\\s\\d{2}:\\d{2}:\\d{2}"))
+
+match_fcb_bvb %>% 
+  knitr::kable()
+
+# date of the match
+match_date <- match_fcb_bvb %>% 
+  select(date) %>% 
+  as_vector() 
+```
+
+The match took place on `r match_date`.
+
+## Alternative to solution a), b), c)
+
+The tasks in a), b), c) could alternatively be solved with the following query that entails two left joins of the tables `Match` and `Team`.
+
+```{r}
+solution_abc <- dbGetQuery(con, "SELECT 
+                                    match.id, 
+                                    home.team_long_name AS home_team_name,
+                                    away.team_long_name AS away_team_name, date
+                                 FROM Match AS match
+                                 LEFT JOIN Team AS home
+                                    ON match.home_team_id = home.id
+                                 LEFT JOIN Team AS away
+                                    ON away_team_id = away.id
+                                 WHERE 
+                                    home_team_name = 'FC Bayern Munich' AND 
+                                    away_team_name = 'Borussia Dortmund' AND
+                                    season = '2015/2016'")
+solution_abc %>% 
+  glimpse()
+```
+
+
+## d) Home team players
+
+Actually, I wanted to use the query that leads to `match_df2`, amend it with UNPIVOT and then join the resulting table with the `Player` table. UNPIVOT was intended to gather the 11 home_player columns into rows while creating a column containing the player ids. This would have enabled the final join with `Player` on id. Unfortunately UNPIVOT did not work. Therefore, I performed the gathering with `dplyr::gather` after having created `match_df2` per SQL query.
+
+```{r}
+
+# the two joins with the Home table give us the team names on which we filter in the WHERE clause
+match_df2 <- dbGetQuery(con, 
+                        "SELECT 
+                            match.*,
+                            home.team_long_name AS home_team_name,
+                            away.team_long_name AS away_team_name
+                         FROM Match AS match
+                         LEFT JOIN Team AS home 
+                            ON match.home_team_id = home.id
+                        LEFT JOIN Team AS away
+                            ON away_team_id = away.id
+                        WHERE
+                           home_team_name = 'FC Bayern Munich' AND
+                           away_team_name = 'Borussia Dortmund' AND
+                           season = '2015/2016'")
+
+match_df2 %>% 
+  glimpse()
+
+# transform match_df2 from wide to long 
+# gather the 11 home_player columns into a column called "home_player" and a
+# column containing the ids called "home_player_id"
+match_df2_gathered <- match_df2 %>%
+               gather(key = "home_player",
+                     value = "home_player_id",
+                     home_player_1 : home_player_11) %>% 
+               # remove the players from BVB, date, league_id and country_id etc.
+               # since they are of no concern here
+               select(-(away_player_1 : away_player_11), 
+                      -date,
+                      -league_id,
+                      -country_id,
+                      -home_team_goal,
+                      -away_team_goal)
+match_df2_gathered %>% 
+  knitr::kable()
+
+```
+
+Next, I load the `Player` table in R as `players` and perform the semi join with `match_df2_gathered` in order to get the player names who played in the match for FC Bayern Munich. Those players are saved in a data frame called `match_players`.
+
+```{r}
+players <- dbGetQuery(con, paste("SELECT * 
+                                  FROM Player"))
+
+# only keep those players that played in that game
+match_players <- players %>%
+  semi_join(match_df2_gathered,
+             by = c("id" = "home_player_id"))
+
+match_players %>% 
+  knitr::kable()
+```
+
+## e) Average height and weight of the players
+
+For this task we can use `match_players`. 
+
+```{r}
+avg_height_weight <- match_players %>%
+  select(height, weight) %>% 
+  colMeans()
+```
+
+Taking the mean for the columns `height` and `weight` results in a mean weight of `r round(avg_height_weight["weight"], 2)` and a mean height of `r round(avg_height_weight["height"],2)`.
+
+## f) Different leagues represented in the table Match
+
+Using the SELECT DISTINCT command in combination with a left join on league id, gives us the 10 distinct leagues from the table `League`.
+
+```{r}
+
+# get all leagues in the table Match
+# left join on League gives us the league names
+leagues <- dbGetQuery(con, "SELECT DISTINCT league_id, League.* 
+                            FROM Match
+                            LEFT JOIN League 
+                            ON Match.league_id = League.id") 
+leagues %>% 
+  knitr::kable()
+```
+
