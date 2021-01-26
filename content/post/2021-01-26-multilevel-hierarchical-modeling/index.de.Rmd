@@ -1,0 +1,368 @@
+---
+title: Multilevel (Hierarchical) Modeling
+author: Nicolas Mollier
+date: '2021-01-26'
+slug: multilevel-hierarchical-modeling
+categories: []
+tags:
+  - Multilevel
+  - Hierarchical
+  - Topic Modeling
+subtitle: ''
+summary: ''
+authors: []
+lastmod: '2021-01-26T10:56:17+01:00'
+featured: no
+image:
+  caption: ''
+  focal_point: ''
+  preview_only: no
+projects: []
+---
+
+
+In this analysis I build multilevel models. Therefore, I look at uranium measures taken at a county-level as well as at a variable on the household-level called `basement` that indicates whether the measure was taken in the basement or not. The analysis replicates key figures from Gelman (2006).
+
+# Working Directory and Packages
+
+```{r}
+rm(list = ls())
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, warning=FALSE}
+knitr::opts_knit$set(root.dir = "/home/nicolas/Documents/personal_website/content/post")
+# setwd is used here to make sure that the code works even when it is run not by pressing "Run Document" 
+# but by executing the chunks step by step
+setwd("/home/nicolas/Documents/personal_website/content/post")
+```
+
+```{r Packages, message = FALSE}
+library(tidyverse)
+library(lme4)
+library(shiny)
+library(broom)
+```
+
+
+
+
+# 1. Read in the data and join the two data sets
+
+In the first step, both the county and household data sets are loaded and saved as `county` and `household`.
+
+```{r, message = FALSE}
+county <- read_csv("county.csv")
+county <- county %>% 
+  mutate(county = as.character(county))
+household <- read_csv("household.csv")
+glimpse(county)
+glimpse(household)
+```
+
+The variable `county` of the data set `county` uniquely identifies each observation.
+
+```{r}
+county %>% 
+  count(county) %>% 
+  filter(n > 1)
+```
+
+`household` and `county` are left joined, using the `county` variable as key. The resulting joined data frame is called `data_joined`. In addition to the information provided by `household`, it contains the log uranium measures of the respective county.
+
+```{r}
+data_joined <- household %>% 
+  left_join(county, by = "county.name") %>% 
+  select(-county.y) %>% 
+  rename(county = county.x)
+
+glimpse(data_joined)
+```
+
+
+
+
+# 2. Varying-intercept model with an individual-level predictor
+
+In this task, a partial pooling model with varying intercept is being compared to a no-pooling model. Using the `lmer()` function, the partial pooling model is estimated. The resulting `r nrow(county)` intercept coefficients are saved as `alpha_ml_1`.
+
+```{r}
+mod_ml_1 <- lmer(log.radon ~ 1 + basement + (1 | county), data = data_joined)
+alpha_ml_1 <- coef(mod_ml_1)$county[,1]
+```
+
+The no-pooling model is estimated with OLS regression. In addition to the predictor `basement`, an indicator variable is added for each county. The "-1" removes the constant term. This is done to have all 85 counties included as indicator variables. We get a different regression line for each county with a different intercept but the same slope. The intercept coefficients for the no-pooling model are stored in `alpha_np_1`. 
+
+```{r, warning=FALSE}
+mod_np_1 <- lm(log.radon ~ basement + as.factor(county.name) - 1, data = data_joined)
+
+alpha_np_1 <- coef(mod_np_1) %>% 
+  broom::tidy() %>% 
+  rename(county = names) %>% 
+  rename(intercept = x) %>% 
+  # extract only the estimates for the indicator variables, not for basement
+  filter(str_detect(county, "^as.")) %>%  
+  # remove the prefix as.factor(county.name) in the naming of the county indicator variables 
+  mutate(county = str_remove_all(county, "as.factor\\(county.name\\)")) 
+
+
+```
+
+Let us compare the two modeling approaches by taking the absolute differences of the intercept estimates of both models for each county.
+
+```{r}
+abs_diff <- abs(alpha_ml_1 - alpha_np_1$intercept) %>% 
+  as_tibble() %>% 
+  rename(abs_diff = value) %>% 
+  mutate(county = row_number()) 
+```
+
+We can see that the counties with particularly high deviations between the intercept estimates from the no-pooling and the partial-pooling all have small sample sizes. In contrast, the counties with particularly low deviations between the intercept estimates from the no-pooling and the partial-pooling have generally high sample sizes. This is not surprising. In fact, it is to be expected that counties with low sample sizes have more extreme no-pooling intercept estimates (Gelman & Hill, 2006, p. 256).
+
+```{r}
+
+abs_diff_augmented <- household %>% 
+  group_by(county.name) %>% 
+  mutate(n = n()) %>% 
+  left_join(abs_diff, by = c("county")) 
+  
+
+# augment abs_diff with the county name and the sample size for each county
+abs_diff <- abs_diff %>% 
+  left_join(abs_diff_augmented %>% select(county, county.name, n),
+            by = "county") %>% 
+  unique()
+
+
+
+abs_diff %>% 
+  arrange(desc(abs_diff)) %>% 
+  head(n = 10) %>% 
+  knitr::kable()
+
+abs_diff %>% 
+  arrange(abs_diff) %>% 
+  head(n = 10) %>% 
+  knitr::kable()
+```
+
+
+If we try to replicate Figure 1 on page 433 in Gelman (2006), we notice two things. Firstly, the graphs visualize quite well that the intercepts of the no-pooling and the partial-pooling model differ the most in counties with a low sample size, like Lac Qui Parle, and are quite similar in counties with a high sample size such as Stearns or St Louis. Secondly, if we compare the graphs to Fig. 1 in Gelman (2006), we see that the labeling of the variable `basement` is the other way around in the paper compared to our data. Cases that take on the value 1 in `basement` in our data set take on the value 0 in the paper and vice versa. Note, that the no-pooling line is the one in gray and the partial-pooling line is the one in black.
+
+```{r warning = FALSE}
+county_names_sample <- c("LAC QUI PARLE", "AITKIN", "KOOCHICHING", "DOUGLAS", "CLAY", "STEARNS", "RAMSEY", "ST LOUIS")
+
+slope_1_np <- coef(mod_np_1)["basement"]
+slope_1_ml <- fixef(mod_ml_1)["basement"]
+
+intercept_slope_1 <- alpha_np_1 %>% 
+  rename(county.name = county) %>% 
+  rename(intercept_np = intercept) %>% 
+  mutate(intercept_ml = alpha_ml_1) %>% 
+  mutate(slope_np = slope_1_np) %>% 
+  mutate(slope_ml = slope_1_ml) %>% 
+  filter(county.name %in% county_names_sample) %>% 
+  mutate(county.name = factor(county.name, levels = county_names_sample))
+  
+
+data_joined %>% 
+  filter(county.name %in% county_names_sample) %>% 
+  mutate(county.name = factor(county.name, levels =county_names_sample)) %>% 
+  ggplot(aes(basement, log.radon)) +
+  geom_jitter(width = 0.05, height = 0) +
+  scale_y_continuous(limits = c(-2.5, 4),
+                     breaks = seq(-1, 3, 2)) +
+  # no-pooling line
+  geom_abline(data = intercept_slope_1, 
+              aes(intercept = intercept_np, slope = slope_np), 
+              alpha = 0.3) +
+  # partial-pooling line
+  geom_abline(data = intercept_slope_1, 
+              aes(intercept = intercept_ml, slope = slope_ml), 
+              alpha = 1) +
+  facet_wrap(~county.name, nrow = 2, ncol = 4) +
+  scale_x_continuous(breaks = c(0, 1))
+```
+
+## Recoded Variable Basement
+
+If we recode `basement`, we can replicate Figure 1 and later on Figure 2. 
+
+```{r}
+data_joined_recoded <- data_joined %>%
+  mutate(basement = ifelse(basement == 0, 1, 0))
+```
+
+I re-estimate the partial-pooling model as well as the no-pooling model, using the recoded variable `basement`, calculate the absolute difference in the intercepts and plot Figure 1 again.
+
+```{r, warning = FALSE, message = FALSE}
+mod_ml_1_recoded <- lmer(log.radon ~ 1 + basement + (1 | county), data = data_joined_recoded)
+alpha_ml_1_recoded <- coef(mod_ml_1_recoded)$county[,1]
+
+
+
+mod_np_1_recoded <- lm(log.radon ~ basement + as.factor(county.name) - 1, data = data_joined_recoded)
+alpha_np_1_recoded <- coef(mod_np_1_recoded) %>% 
+  tidy() %>% 
+  rename(county = names) %>% 
+  rename(intercept = x) %>% 
+  filter(str_detect(county, "^as.")) %>% 
+  mutate(county = str_remove_all(county, "as.factor\\(county.name\\)")) 
+
+
+abs_diff_recoded <- abs(alpha_ml_1_recoded - alpha_np_1_recoded$intercept) %>% 
+  as_tibble() %>% 
+  rename(abs_diff = value) %>% 
+  mutate(county = row_number()) 
+
+
+abs_diff_augmented_recoded <- household %>% 
+  group_by(county.name) %>% 
+  mutate(n = n()) %>% 
+  left_join(abs_diff_recoded, by = c("county"))
+
+abs_diff_recoded <- abs_diff_recoded %>% 
+  left_join(abs_diff_augmented_recoded %>% select(county, county.name, n),
+            by = "county") %>% 
+  unique()
+```
+
+
+It still holds that counties with particularly high deviations between the intercept estimates from the no-pooling and the partial-pooling all have small sample sizes. The counties with particularly low deviations between the intercept estimates from the no-pooling and the partial-pooling have mostly high sample sizes, even though there are a few cases with low deviation and low sample size.
+
+```{r}
+abs_diff_recoded %>% 
+  arrange(desc(abs_diff)) %>% 
+  head(n = 10) %>% 
+  knitr::kable()
+
+abs_diff_recoded %>% 
+  arrange(abs_diff) %>% 
+  head(n = 10) %>% 
+  knitr::kable()
+```
+
+
+Now, the plot looks like Figure 1 in (Gelman, 2006).
+
+```{r, warning = FALSE, message = FALSE}
+county_names_sample <- c("LAC QUI PARLE", "AITKIN", "KOOCHICHING", "DOUGLAS", "CLAY", "STEARNS", "RAMSEY", "ST LOUIS")
+
+slope_1_np_recoded <- coef(mod_np_1_recoded)["basement"]
+slope_1_ml_recoded <- fixef(mod_ml_1_recoded)["basement"]
+
+intercept_slope_1_recoded <- alpha_np_1_recoded %>% 
+  rename(county.name = county) %>% 
+  rename(intercept_np = intercept) %>% 
+  mutate(intercept_ml = alpha_ml_1_recoded) %>% 
+  mutate(slope_np = slope_1_np_recoded) %>% 
+  mutate(slope_ml = slope_1_ml_recoded) %>% 
+  filter(county.name %in% county_names_sample) %>% 
+  mutate(county.name = factor(county.name, levels = county_names_sample))
+  
+
+data_joined_recoded %>% 
+  filter(county.name %in% county_names_sample) %>% 
+  mutate(county.name = factor(county.name, levels =county_names_sample)) %>% 
+  ggplot(aes(basement, log.radon)) +
+  geom_jitter(width = 0.05, height = 0) +
+  scale_y_continuous(limits = c(-2.5, 4),
+                     breaks = seq(-1, 3, 2)) +
+  geom_abline(data = intercept_slope_1_recoded, 
+              aes(intercept = intercept_np, slope = slope_np), 
+              alpha = 0.3) +
+  geom_abline(data = intercept_slope_1_recoded, 
+              aes(intercept = intercept_ml, slope = slope_ml), 
+              alpha = 1) +
+  facet_wrap(~county.name, nrow = 2, ncol = 4) +
+  scale_x_continuous(breaks = c(0, 1))
+```
+
+
+
+
+# 3. Varying-intercept model with an individual-level and a group-level predictor
+
+Next, we estimate a partial-pooling model with varying-intercept, an individual-level and a group-level predictor. First, we use the original data set and then the recoded one.
+
+```{r}
+mod_ml_2 <- lmer(log.radon ~ 1 + basement + log.uranium + (1  | county), 
+                 data = data_joined)
+```
+
+The coefficients of that model are saved as `county_coefficients`. The standard errors for each county are stored in `se_ranef`.
+
+```{r}
+county_coefficients <- coef(mod_ml_2)$county %>% 
+  as.data.frame() %>% 
+  mutate(county = rownames(.)) %>% 
+  rename(Intercept = "(Intercept)") 
+  
+se_ranef <- arm::se.ranef(mod_ml_2)$county
+```
+
+In order for us to be able to reproduce Figure 2 in Gelman (2006), we need the `log.uranium` measures for each county. Therefore, we `left_join` `county_coefficients` with `county`. Moreover, we need to calculate the county-specific intercepts. In order to to this, I use the intercept we get from `coef(mod_ml_2)$county` and add the county-specific log.uranium measure (`log.uranium.y`) times the slope parameter (`log.uranium.x`) that we get from `coef(mod_ml_2)$county` as well. So basically, I am using $γ_0 + γ_1 ∗ log(uranium_j)$ where $γ_0$ = `coef(mod_ml_2)$county["(Intercept)"]`, $γ_1$ = `coef(mod_ml_2)$county["log.uranium"]`. The line in the plot has `fixef(mod_ml_2)[1]` as intercept and `fixef(mod_ml_2)[3]` as slope.
+
+```{r}
+county_coefficients %>%
+  left_join(county, by = "county") %>% 
+  # calculate the county-specific intercept
+  mutate(alpha = Intercept + log.uranium.x * log.uranium.y) %>% 
+  ggplot(aes(log.uranium.y, alpha)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = alpha - se_ranef, ymax = alpha + se_ranef), 
+                size = 0.3) +
+  # line in plot using the fixed effect coefficients
+  geom_abline(intercept = fixef(mod_ml_2)[1], slope = fixef(mod_ml_2)[3]) +
+  xlab("county-level uranium measures (in log)")+
+  ylab("regression intercept (alpha)")
+```
+
+
+
+```{r include = FALSE}
+fixef(mod_ml_2)[1] + fixef(mod_ml_2)[3] * county$log.uranium + ranef(mod_ml_2)$county %>% as_vector() 
+```
+
+The plot looks almost like Figure 2 in Gelman(2006). However, the y-scale does not match. Let us see what happens when we use the recoded data set.
+
+## Recoded Variable Basement
+
+If we use `data_joined_recoded` instead, the plot matches the one in the paper.
+
+```{r}
+mod_ml_2_recoded <- lmer(log.radon ~ 1 + basement + log.uranium + (1  | county), 
+                         data = data_joined_recoded)
+
+county_coefficients_recoded <- coef(mod_ml_2_recoded)$county %>% 
+  as.data.frame() %>% 
+  mutate(county = rownames(.)) %>% 
+  rename(Intercept = "(Intercept)") 
+
+se_ranef <- arm::se.ranef(mod_ml_2_recoded)$county
+
+county_coefficients_recoded %>%
+  left_join(county, by = "county") %>% 
+  mutate(alpha = Intercept + log.uranium.x * log.uranium.y) %>% 
+  ggplot(aes(log.uranium.y, alpha)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = alpha - se_ranef, ymax = alpha + se_ranef),
+                size = 0.3) +
+  geom_abline(intercept = fixef(mod_ml_2_recoded)[1], slope = fixef(mod_ml_2_recoded)[3]) +
+  xlab("county-level uranium measures (in log)")+
+  ylab("regression intercept (alpha)") +
+  scale_y_continuous(limits = c(0, 1.5))
+```
+
+
+
+
+
+# Literature
+
+Gelman, A. (2006). Multilevel (hierarchical) modeling: what it can and cannot do. Technometrics, 48(3), 432-435.
+
+Gelman, A., & Hill, J. (2006). Data analysis using regression and multilevel/hierarchical models. Cambridge university press.

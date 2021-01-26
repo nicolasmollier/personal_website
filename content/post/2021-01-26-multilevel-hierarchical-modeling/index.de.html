@@ -1,0 +1,583 @@
+---
+title: Multilevel (Hierarchical) Modeling
+author: Nicolas Mollier
+date: '2021-01-26'
+slug: multilevel-hierarchical-modeling
+categories: []
+tags:
+  - Multilevel
+  - Hierarchical
+  - Topic Modeling
+subtitle: ''
+summary: ''
+authors: []
+lastmod: '2021-01-26T10:56:17+01:00'
+featured: no
+image:
+  caption: ''
+  focal_point: ''
+  preview_only: no
+projects: []
+---
+
+<link href="/rmarkdown-libs/anchor-sections/anchor-sections.css" rel="stylesheet" />
+<script src="/rmarkdown-libs/anchor-sections/anchor-sections.js"></script>
+
+
+<p>In this analysis I build multilevel models. Therefore, I look at uranium measures taken at a county-level as well as at a variable on the household-level called <code>basement</code> that indicates whether the measure was taken in the basement or not. The analysis replicates key figures from Gelman (2006).</p>
+<div id="working-directory-and-packages" class="section level1">
+<h1>Working Directory and Packages</h1>
+<pre class="r"><code>rm(list = ls())</code></pre>
+<pre class="r"><code>knitr::opts_knit$set(root.dir = &quot;/home/nicolas/Documents/personal_website/content/post&quot;)
+# setwd is used here to make sure that the code works even when it is run not by pressing &quot;Run Document&quot; 
+# but by executing the chunks step by step
+setwd(&quot;/home/nicolas/Documents/personal_website/content/post&quot;)</code></pre>
+<pre class="r"><code>library(tidyverse)
+library(lme4)
+library(shiny)
+library(broom)</code></pre>
+</div>
+<div id="read-in-the-data-and-join-the-two-data-sets" class="section level1">
+<h1>1. Read in the data and join the two data sets</h1>
+<p>In the first step, both the county and household data sets are loaded and saved as <code>county</code> and <code>household</code>.</p>
+<pre class="r"><code>county &lt;- read_csv(&quot;county.csv&quot;)
+county &lt;- county %&gt;% 
+  mutate(county = as.character(county))
+household &lt;- read_csv(&quot;household.csv&quot;)
+glimpse(county)</code></pre>
+<pre><code>## Rows: 85
+## Columns: 3
+## $ county      &lt;chr&gt; &quot;1&quot;, &quot;2&quot;, &quot;3&quot;, &quot;4&quot;, &quot;5&quot;, &quot;6&quot;, &quot;7&quot;, &quot;8&quot;, &quot;9&quot;, &quot;10&quot;, &quot;11&quot;, …
+## $ county.name &lt;chr&gt; &quot;AITKIN&quot;, &quot;ANOKA&quot;, &quot;BECKER&quot;, &quot;BELTRAMI&quot;, &quot;BENTON&quot;, &quot;BIG S…
+## $ log.uranium &lt;dbl&gt; -0.68904760, -0.84731286, -0.11345877, -0.59335253, -0.14…</code></pre>
+<pre class="r"><code>glimpse(household)</code></pre>
+<pre><code>## Rows: 919
+## Columns: 4
+## $ county      &lt;dbl&gt; 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, …
+## $ county.name &lt;chr&gt; &quot;AITKIN&quot;, &quot;AITKIN&quot;, &quot;AITKIN&quot;, &quot;AITKIN&quot;, &quot;ANOKA&quot;, &quot;ANOKA&quot;,…
+## $ log.radon   &lt;dbl&gt; 0.78845736, 0.78845736, 1.06471074, 0.00000000, 1.1314021…
+## $ basement    &lt;dbl&gt; 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, …</code></pre>
+<p>The variable <code>county</code> of the data set <code>county</code> uniquely identifies each observation.</p>
+<pre class="r"><code>county %&gt;% 
+  count(county) %&gt;% 
+  filter(n &gt; 1)</code></pre>
+<pre><code>## # A tibble: 0 x 2
+## # … with 2 variables: county &lt;chr&gt;, n &lt;int&gt;</code></pre>
+<p><code>household</code> and <code>county</code> are left joined, using the <code>county</code> variable as key. The resulting joined data frame is called <code>data_joined</code>. In addition to the information provided by <code>household</code>, it contains the log uranium measures of the respective county.</p>
+<pre class="r"><code>data_joined &lt;- household %&gt;% 
+  left_join(county, by = &quot;county.name&quot;) %&gt;% 
+  select(-county.y) %&gt;% 
+  rename(county = county.x)
+
+glimpse(data_joined)</code></pre>
+<pre><code>## Rows: 919
+## Columns: 5
+## $ county      &lt;dbl&gt; 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, …
+## $ county.name &lt;chr&gt; &quot;AITKIN&quot;, &quot;AITKIN&quot;, &quot;AITKIN&quot;, &quot;AITKIN&quot;, &quot;ANOKA&quot;, &quot;ANOKA&quot;,…
+## $ log.radon   &lt;dbl&gt; 0.78845736, 0.78845736, 1.06471074, 0.00000000, 1.1314021…
+## $ basement    &lt;dbl&gt; 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, …
+## $ log.uranium &lt;dbl&gt; -0.6890476, -0.6890476, -0.6890476, -0.6890476, -0.847312…</code></pre>
+</div>
+<div id="varying-intercept-model-with-an-individual-level-predictor" class="section level1">
+<h1>2. Varying-intercept model with an individual-level predictor</h1>
+<p>In this task, a partial pooling model with varying intercept is being compared to a no-pooling model. Using the <code>lmer()</code> function, the partial pooling model is estimated. The resulting 85 intercept coefficients are saved as <code>alpha_ml_1</code>.</p>
+<pre class="r"><code>mod_ml_1 &lt;- lmer(log.radon ~ 1 + basement + (1 | county), data = data_joined)
+alpha_ml_1 &lt;- coef(mod_ml_1)$county[,1]</code></pre>
+<p>The no-pooling model is estimated with OLS regression. In addition to the predictor <code>basement</code>, an indicator variable is added for each county. The “-1” removes the constant term. This is done to have all 85 counties included as indicator variables. We get a different regression line for each county with a different intercept but the same slope. The intercept coefficients for the no-pooling model are stored in <code>alpha_np_1</code>.</p>
+<pre class="r"><code>mod_np_1 &lt;- lm(log.radon ~ basement + as.factor(county.name) - 1, data = data_joined)
+
+alpha_np_1 &lt;- coef(mod_np_1) %&gt;% 
+  broom::tidy() %&gt;% 
+  rename(county = names) %&gt;% 
+  rename(intercept = x) %&gt;% 
+  # extract only the estimates for the indicator variables, not for basement
+  filter(str_detect(county, &quot;^as.&quot;)) %&gt;%  
+  # remove the prefix as.factor(county.name) in the naming of the county indicator variables 
+  mutate(county = str_remove_all(county, &quot;as.factor\\(county.name\\)&quot;)) </code></pre>
+<p>Let us compare the two modeling approaches by taking the absolute differences of the intercept estimates of both models for each county.</p>
+<pre class="r"><code>abs_diff &lt;- abs(alpha_ml_1 - alpha_np_1$intercept) %&gt;% 
+  as_tibble() %&gt;% 
+  rename(abs_diff = value) %&gt;% 
+  mutate(county = row_number()) </code></pre>
+<p>We can see that the counties with particularly high deviations between the intercept estimates from the no-pooling and the partial-pooling all have small sample sizes. In contrast, the counties with particularly low deviations between the intercept estimates from the no-pooling and the partial-pooling have generally high sample sizes. This is not surprising. In fact, it is to be expected that counties with low sample sizes have more extreme no-pooling intercept estimates (Gelman &amp; Hill, 2006, p. 256).</p>
+<pre class="r"><code>abs_diff_augmented &lt;- household %&gt;% 
+  group_by(county.name) %&gt;% 
+  mutate(n = n()) %&gt;% 
+  left_join(abs_diff, by = c(&quot;county&quot;)) 
+  
+
+# augment abs_diff with the county name and the sample size for each county
+abs_diff &lt;- abs_diff %&gt;% 
+  left_join(abs_diff_augmented %&gt;% select(county, county.name, n),
+            by = &quot;county&quot;) %&gt;% 
+  unique()
+
+
+
+abs_diff %&gt;% 
+  arrange(desc(abs_diff)) %&gt;% 
+  head(n = 10) %&gt;% 
+  knitr::kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="right">abs_diff</th>
+<th align="right">county</th>
+<th align="left">county.name</th>
+<th align="right">n</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="right">1.0908752</td>
+<td align="right">36</td>
+<td align="left">LAC QUI PARLE</td>
+<td align="right">2</td>
+</tr>
+<tr class="even">
+<td align="right">0.8678474</td>
+<td align="right">50</td>
+<td align="left">MURRAY</td>
+<td align="right">1</td>
+</tr>
+<tr class="odd">
+<td align="right">0.8034852</td>
+<td align="right">81</td>
+<td align="left">WATONWAN</td>
+<td align="right">3</td>
+</tr>
+<tr class="even">
+<td align="right">0.6464360</td>
+<td align="right">82</td>
+<td align="left">WILKIN</td>
+<td align="right">1</td>
+</tr>
+<tr class="odd">
+<td align="right">0.5784371</td>
+<td align="right">16</td>
+<td align="left">COOK</td>
+<td align="right">2</td>
+</tr>
+<tr class="even">
+<td align="right">0.4897484</td>
+<td align="right">40</td>
+<td align="left">LINCOLN</td>
+<td align="right">4</td>
+</tr>
+<tr class="odd">
+<td align="right">0.4795551</td>
+<td align="right">79</td>
+<td align="left">WASECA</td>
+<td align="right">4</td>
+</tr>
+<tr class="even">
+<td align="right">0.4156191</td>
+<td align="right">47</td>
+<td align="left">MILLE LACS</td>
+<td align="right">2</td>
+</tr>
+<tr class="odd">
+<td align="right">0.4008695</td>
+<td align="right">51</td>
+<td align="left">NICOLLET</td>
+<td align="right">4</td>
+</tr>
+<tr class="even">
+<td align="right">0.3907357</td>
+<td align="right">37</td>
+<td align="left">LAKE</td>
+<td align="right">9</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code>abs_diff %&gt;% 
+  arrange(abs_diff) %&gt;% 
+  head(n = 10) %&gt;% 
+  knitr::kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="right">abs_diff</th>
+<th align="right">county</th>
+<th align="left">county.name</th>
+<th align="right">n</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="right">0.0021065</td>
+<td align="right">26</td>
+<td align="left">HENNEPIN</td>
+<td align="right">105</td>
+</tr>
+<tr class="even">
+<td align="right">0.0079531</td>
+<td align="right">19</td>
+<td align="left">DAKOTA</td>
+<td align="right">63</td>
+</tr>
+<tr class="odd">
+<td align="right">0.0089264</td>
+<td align="right">71</td>
+<td align="left">STEARNS</td>
+<td align="right">25</td>
+</tr>
+<tr class="even">
+<td align="right">0.0109596</td>
+<td align="right">80</td>
+<td align="left">WASHINGTON</td>
+<td align="right">46</td>
+</tr>
+<tr class="odd">
+<td align="right">0.0135798</td>
+<td align="right">5</td>
+<td align="left">BENTON</td>
+<td align="right">4</td>
+</tr>
+<tr class="even">
+<td align="right">0.0223167</td>
+<td align="right">70</td>
+<td align="left">ST LOUIS</td>
+<td align="right">116</td>
+</tr>
+<tr class="odd">
+<td align="right">0.0260766</td>
+<td align="right">54</td>
+<td align="left">OLMSTED</td>
+<td align="right">23</td>
+</tr>
+<tr class="even">
+<td align="right">0.0311113</td>
+<td align="right">11</td>
+<td align="left">CASS</td>
+<td align="right">5</td>
+</tr>
+<tr class="odd">
+<td align="right">0.0328284</td>
+<td align="right">6</td>
+<td align="left">BIG STONE</td>
+<td align="right">3</td>
+</tr>
+<tr class="even">
+<td align="right">0.0408164</td>
+<td align="right">61</td>
+<td align="left">RAMSEY</td>
+<td align="right">32</td>
+</tr>
+</tbody>
+</table>
+<p>If we try to replicate Figure 1 on page 433 in Gelman (2006), we notice two things. Firstly, the graphs visualize quite well that the intercepts of the no-pooling and the partial-pooling model differ the most in counties with a low sample size, like Lac Qui Parle, and are quite similar in counties with a high sample size such as Stearns or St Louis. Secondly, if we compare the graphs to Fig. 1 in Gelman (2006), we see that the labeling of the variable <code>basement</code> is the other way around in the paper compared to our data. Cases that take on the value 1 in <code>basement</code> in our data set take on the value 0 in the paper and vice versa. Note, that the no-pooling line is the one in gray and the partial-pooling line is the one in black.</p>
+<pre class="r"><code>county_names_sample &lt;- c(&quot;LAC QUI PARLE&quot;, &quot;AITKIN&quot;, &quot;KOOCHICHING&quot;, &quot;DOUGLAS&quot;, &quot;CLAY&quot;, &quot;STEARNS&quot;, &quot;RAMSEY&quot;, &quot;ST LOUIS&quot;)
+
+slope_1_np &lt;- coef(mod_np_1)[&quot;basement&quot;]
+slope_1_ml &lt;- fixef(mod_ml_1)[&quot;basement&quot;]
+
+intercept_slope_1 &lt;- alpha_np_1 %&gt;% 
+  rename(county.name = county) %&gt;% 
+  rename(intercept_np = intercept) %&gt;% 
+  mutate(intercept_ml = alpha_ml_1) %&gt;% 
+  mutate(slope_np = slope_1_np) %&gt;% 
+  mutate(slope_ml = slope_1_ml) %&gt;% 
+  filter(county.name %in% county_names_sample) %&gt;% 
+  mutate(county.name = factor(county.name, levels = county_names_sample))
+  
+
+data_joined %&gt;% 
+  filter(county.name %in% county_names_sample) %&gt;% 
+  mutate(county.name = factor(county.name, levels =county_names_sample)) %&gt;% 
+  ggplot(aes(basement, log.radon)) +
+  geom_jitter(width = 0.05, height = 0) +
+  scale_y_continuous(limits = c(-2.5, 4),
+                     breaks = seq(-1, 3, 2)) +
+  # no-pooling line
+  geom_abline(data = intercept_slope_1, 
+              aes(intercept = intercept_np, slope = slope_np), 
+              alpha = 0.3) +
+  # partial-pooling line
+  geom_abline(data = intercept_slope_1, 
+              aes(intercept = intercept_ml, slope = slope_ml), 
+              alpha = 1) +
+  facet_wrap(~county.name, nrow = 2, ncol = 4) +
+  scale_x_continuous(breaks = c(0, 1))</code></pre>
+<p><img src="/post/2021-01-26-multilevel-hierarchical-modeling/index.de_files/figure-html/unnamed-chunk-10-1.png" width="672" /></p>
+<div id="recoded-variable-basement" class="section level2">
+<h2>Recoded Variable Basement</h2>
+<p>If we recode <code>basement</code>, we can replicate Figure 1 and later on Figure 2.</p>
+<pre class="r"><code>data_joined_recoded &lt;- data_joined %&gt;%
+  mutate(basement = ifelse(basement == 0, 1, 0))</code></pre>
+<p>I re-estimate the partial-pooling model as well as the no-pooling model, using the recoded variable <code>basement</code>, calculate the absolute difference in the intercepts and plot Figure 1 again.</p>
+<pre class="r"><code>mod_ml_1_recoded &lt;- lmer(log.radon ~ 1 + basement + (1 | county), data = data_joined_recoded)
+alpha_ml_1_recoded &lt;- coef(mod_ml_1_recoded)$county[,1]
+
+
+
+mod_np_1_recoded &lt;- lm(log.radon ~ basement + as.factor(county.name) - 1, data = data_joined_recoded)
+alpha_np_1_recoded &lt;- coef(mod_np_1_recoded) %&gt;% 
+  tidy() %&gt;% 
+  rename(county = names) %&gt;% 
+  rename(intercept = x) %&gt;% 
+  filter(str_detect(county, &quot;^as.&quot;)) %&gt;% 
+  mutate(county = str_remove_all(county, &quot;as.factor\\(county.name\\)&quot;)) 
+
+
+abs_diff_recoded &lt;- abs(alpha_ml_1_recoded - alpha_np_1_recoded$intercept) %&gt;% 
+  as_tibble() %&gt;% 
+  rename(abs_diff = value) %&gt;% 
+  mutate(county = row_number()) 
+
+
+abs_diff_augmented_recoded &lt;- household %&gt;% 
+  group_by(county.name) %&gt;% 
+  mutate(n = n()) %&gt;% 
+  left_join(abs_diff_recoded, by = c(&quot;county&quot;))
+
+abs_diff_recoded &lt;- abs_diff_recoded %&gt;% 
+  left_join(abs_diff_augmented_recoded %&gt;% select(county, county.name, n),
+            by = &quot;county&quot;) %&gt;% 
+  unique()</code></pre>
+<p>It still holds that counties with particularly high deviations between the intercept estimates from the no-pooling and the partial-pooling all have small sample sizes. The counties with particularly low deviations between the intercept estimates from the no-pooling and the partial-pooling have mostly high sample sizes, even though there are a few cases with low deviation and low sample size.</p>
+<pre class="r"><code>abs_diff_recoded %&gt;% 
+  arrange(desc(abs_diff)) %&gt;% 
+  head(n = 10) %&gt;% 
+  knitr::kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="right">abs_diff</th>
+<th align="right">county</th>
+<th align="left">county.name</th>
+<th align="right">n</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="right">1.0633300</td>
+<td align="right">36</td>
+<td align="left">LAC QUI PARLE</td>
+<td align="right">2</td>
+</tr>
+<tr class="even">
+<td align="right">0.8403021</td>
+<td align="right">50</td>
+<td align="left">MURRAY</td>
+<td align="right">1</td>
+</tr>
+<tr class="odd">
+<td align="right">0.7759400</td>
+<td align="right">81</td>
+<td align="left">WATONWAN</td>
+<td align="right">3</td>
+</tr>
+<tr class="even">
+<td align="right">0.6188908</td>
+<td align="right">82</td>
+<td align="left">WILKIN</td>
+<td align="right">1</td>
+</tr>
+<tr class="odd">
+<td align="right">0.6059824</td>
+<td align="right">16</td>
+<td align="left">COOK</td>
+<td align="right">2</td>
+</tr>
+<tr class="even">
+<td align="right">0.5071003</td>
+<td align="right">79</td>
+<td align="left">WASECA</td>
+<td align="right">4</td>
+</tr>
+<tr class="odd">
+<td align="right">0.4622032</td>
+<td align="right">40</td>
+<td align="left">LINCOLN</td>
+<td align="right">4</td>
+</tr>
+<tr class="even">
+<td align="right">0.4431643</td>
+<td align="right">47</td>
+<td align="left">MILLE LACS</td>
+<td align="right">2</td>
+</tr>
+<tr class="odd">
+<td align="right">0.4182810</td>
+<td align="right">37</td>
+<td align="left">LAKE</td>
+<td align="right">9</td>
+</tr>
+<tr class="even">
+<td align="right">0.4119445</td>
+<td align="right">22</td>
+<td align="left">FARIBAULT</td>
+<td align="right">6</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code>abs_diff_recoded %&gt;% 
+  arrange(abs_diff) %&gt;% 
+  head(n = 10) %&gt;% 
+  knitr::kable()</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="right">abs_diff</th>
+<th align="right">county</th>
+<th align="left">county.name</th>
+<th align="right">n</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="right">0.0052832</td>
+<td align="right">6</td>
+<td align="left">BIG STONE</td>
+<td align="right">3</td>
+</tr>
+<tr class="even">
+<td align="right">0.0134331</td>
+<td align="right">72</td>
+<td align="left">STEELE</td>
+<td align="right">10</td>
+</tr>
+<tr class="odd">
+<td align="right">0.0186188</td>
+<td align="right">71</td>
+<td align="left">STEARNS</td>
+<td align="right">25</td>
+</tr>
+<tr class="even">
+<td align="right">0.0206758</td>
+<td align="right">4</td>
+<td align="left">BELTRAMI</td>
+<td align="right">7</td>
+</tr>
+<tr class="odd">
+<td align="right">0.0219377</td>
+<td align="right">3</td>
+<td align="left">BECKER</td>
+<td align="right">3</td>
+</tr>
+<tr class="even">
+<td align="right">0.0236898</td>
+<td align="right">83</td>
+<td align="left">WINONA</td>
+<td align="right">13</td>
+</tr>
+<tr class="odd">
+<td align="right">0.0271754</td>
+<td align="right">84</td>
+<td align="left">WRIGHT</td>
+<td align="right">13</td>
+</tr>
+<tr class="even">
+<td align="right">0.0277508</td>
+<td align="right">10</td>
+<td align="left">CARVER</td>
+<td align="right">6</td>
+</tr>
+<tr class="odd">
+<td align="right">0.0296517</td>
+<td align="right">26</td>
+<td align="left">HENNEPIN</td>
+<td align="right">105</td>
+</tr>
+<tr class="even">
+<td align="right">0.0342085</td>
+<td align="right">43</td>
+<td align="left">MARSHALL</td>
+<td align="right">9</td>
+</tr>
+</tbody>
+</table>
+<p>Now, the plot looks like Figure 1 in (Gelman, 2006).</p>
+<pre class="r"><code>county_names_sample &lt;- c(&quot;LAC QUI PARLE&quot;, &quot;AITKIN&quot;, &quot;KOOCHICHING&quot;, &quot;DOUGLAS&quot;, &quot;CLAY&quot;, &quot;STEARNS&quot;, &quot;RAMSEY&quot;, &quot;ST LOUIS&quot;)
+
+slope_1_np_recoded &lt;- coef(mod_np_1_recoded)[&quot;basement&quot;]
+slope_1_ml_recoded &lt;- fixef(mod_ml_1_recoded)[&quot;basement&quot;]
+
+intercept_slope_1_recoded &lt;- alpha_np_1_recoded %&gt;% 
+  rename(county.name = county) %&gt;% 
+  rename(intercept_np = intercept) %&gt;% 
+  mutate(intercept_ml = alpha_ml_1_recoded) %&gt;% 
+  mutate(slope_np = slope_1_np_recoded) %&gt;% 
+  mutate(slope_ml = slope_1_ml_recoded) %&gt;% 
+  filter(county.name %in% county_names_sample) %&gt;% 
+  mutate(county.name = factor(county.name, levels = county_names_sample))
+  
+
+data_joined_recoded %&gt;% 
+  filter(county.name %in% county_names_sample) %&gt;% 
+  mutate(county.name = factor(county.name, levels =county_names_sample)) %&gt;% 
+  ggplot(aes(basement, log.radon)) +
+  geom_jitter(width = 0.05, height = 0) +
+  scale_y_continuous(limits = c(-2.5, 4),
+                     breaks = seq(-1, 3, 2)) +
+  geom_abline(data = intercept_slope_1_recoded, 
+              aes(intercept = intercept_np, slope = slope_np), 
+              alpha = 0.3) +
+  geom_abline(data = intercept_slope_1_recoded, 
+              aes(intercept = intercept_ml, slope = slope_ml), 
+              alpha = 1) +
+  facet_wrap(~county.name, nrow = 2, ncol = 4) +
+  scale_x_continuous(breaks = c(0, 1))</code></pre>
+<p><img src="/post/2021-01-26-multilevel-hierarchical-modeling/index.de_files/figure-html/unnamed-chunk-14-1.png" width="672" /></p>
+</div>
+</div>
+<div id="varying-intercept-model-with-an-individual-level-and-a-group-level-predictor" class="section level1">
+<h1>3. Varying-intercept model with an individual-level and a group-level predictor</h1>
+<p>Next, we estimate a partial-pooling model with varying-intercept, an individual-level and a group-level predictor. First, we use the original data set and then the recoded one.</p>
+<pre class="r"><code>mod_ml_2 &lt;- lmer(log.radon ~ 1 + basement + log.uranium + (1  | county), 
+                 data = data_joined)</code></pre>
+<p>The coefficients of that model are saved as <code>county_coefficients</code>. The standard errors for each county are stored in <code>se_ranef</code>.</p>
+<pre class="r"><code>county_coefficients &lt;- coef(mod_ml_2)$county %&gt;% 
+  as.data.frame() %&gt;% 
+  mutate(county = rownames(.)) %&gt;% 
+  rename(Intercept = &quot;(Intercept)&quot;) 
+  
+se_ranef &lt;- arm::se.ranef(mod_ml_2)$county</code></pre>
+<p>In order for us to be able to reproduce Figure 2 in Gelman (2006), we need the <code>log.uranium</code> measures for each county. Therefore, we <code>left_join</code> <code>county_coefficients</code> with <code>county</code>. Moreover, we need to calculate the county-specific intercepts. In order to to this, I use the intercept we get from <code>coef(mod_ml_2)$county</code> and add the county-specific log.uranium measure (<code>log.uranium.y</code>) times the slope parameter (<code>log.uranium.x</code>) that we get from <code>coef(mod_ml_2)$county</code> as well. So basically, I am using <span class="math inline">\(γ_0 + γ_1 ∗ log(uranium_j)\)</span> where <span class="math inline">\(γ_0\)</span> = <code>coef(mod_ml_2)$county["(Intercept)"]</code>, <span class="math inline">\(γ_1\)</span> = <code>coef(mod_ml_2)$county["log.uranium"]</code>. The line in the plot has <code>fixef(mod_ml_2)[1]</code> as intercept and <code>fixef(mod_ml_2)[3]</code> as slope.</p>
+<pre class="r"><code>county_coefficients %&gt;%
+  left_join(county, by = &quot;county&quot;) %&gt;% 
+  # calculate the county-specific intercept
+  mutate(alpha = Intercept + log.uranium.x * log.uranium.y) %&gt;% 
+  ggplot(aes(log.uranium.y, alpha)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = alpha - se_ranef, ymax = alpha + se_ranef), 
+                size = 0.3) +
+  # line in plot using the fixed effect coefficients
+  geom_abline(intercept = fixef(mod_ml_2)[1], slope = fixef(mod_ml_2)[3]) +
+  xlab(&quot;county-level uranium measures (in log)&quot;)+
+  ylab(&quot;regression intercept (alpha)&quot;)</code></pre>
+<p><img src="/post/2021-01-26-multilevel-hierarchical-modeling/index.de_files/figure-html/unnamed-chunk-17-1.png" width="672" /></p>
+<p>The plot looks almost like Figure 2 in Gelman(2006). However, the y-scale does not match. Let us see what happens when we use the recoded data set.</p>
+<div id="recoded-variable-basement-1" class="section level2">
+<h2>Recoded Variable Basement</h2>
+<p>If we use <code>data_joined_recoded</code> instead, the plot matches the one in the paper.</p>
+<pre class="r"><code>mod_ml_2_recoded &lt;- lmer(log.radon ~ 1 + basement + log.uranium + (1  | county), 
+                         data = data_joined_recoded)
+
+county_coefficients_recoded &lt;- coef(mod_ml_2_recoded)$county %&gt;% 
+  as.data.frame() %&gt;% 
+  mutate(county = rownames(.)) %&gt;% 
+  rename(Intercept = &quot;(Intercept)&quot;) 
+
+se_ranef &lt;- arm::se.ranef(mod_ml_2_recoded)$county
+
+county_coefficients_recoded %&gt;%
+  left_join(county, by = &quot;county&quot;) %&gt;% 
+  mutate(alpha = Intercept + log.uranium.x * log.uranium.y) %&gt;% 
+  ggplot(aes(log.uranium.y, alpha)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = alpha - se_ranef, ymax = alpha + se_ranef),
+                size = 0.3) +
+  geom_abline(intercept = fixef(mod_ml_2_recoded)[1], slope = fixef(mod_ml_2_recoded)[3]) +
+  xlab(&quot;county-level uranium measures (in log)&quot;)+
+  ylab(&quot;regression intercept (alpha)&quot;) +
+  scale_y_continuous(limits = c(0, 1.5))</code></pre>
+<p><img src="/post/2021-01-26-multilevel-hierarchical-modeling/index.de_files/figure-html/unnamed-chunk-19-1.png" width="672" /></p>
+</div>
+</div>
+<div id="literature" class="section level1">
+<h1>Literature</h1>
+<p>Gelman, A. (2006). Multilevel (hierarchical) modeling: what it can and cannot do. Technometrics, 48(3), 432-435.</p>
+<p>Gelman, A., &amp; Hill, J. (2006). Data analysis using regression and multilevel/hierarchical models. Cambridge university press.</p>
+</div>
