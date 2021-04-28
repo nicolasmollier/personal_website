@@ -34,10 +34,6 @@ subtitle = ""
   icon_pack = "fas"
   name = "SQL"
 
-[[feature]]
-  icon = "camera-retro"
-  icon_pack = "fas"
-  name = "Photography"
 
 
 # Uncomment to use emoji icons.

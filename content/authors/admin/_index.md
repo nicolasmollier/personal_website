@@ -41,4 +41,4 @@ user_groups:
 - Visitors
 ---
 
-Ich studiere Data Science im Master an der Universität Tübingen. Seit dem WS 2020/2021 bin ich Anwärter bei der studentischen Unternehmensberatung InOne Consult e.V.
+Ich studiere Data Science im Master an der Universität Tübingen. Seit dem WS 2020/2021 bin ich Mitglied bei der studentischen Unternehmensberatung InOne Consult e.V.
