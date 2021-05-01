@@ -17,7 +17,7 @@ header:
 ## R
 - aktuell: [WALKOWIAK, Simon. Big Data Analytics with R. Packt Publishing Ltd, 2016.](https://www.amazon.de/Big-Data-Analytics-R-English/dp/1786466457/ref=sr_1_3?__mk_de_DE=%C3%85M%C3%85%C5%BD%C3%95%C3%91&crid=18WUS4R0HGJQ3&dchild=1&keywords=big+data+analytics+R&qid=1619628350&sprefix=big+data+%2Caps%2C167&sr=8-3)
 
-- aktuell: [WICKHAM, Hadley. Mastering Shiny: Build Interactive Apps, Reports, and Dashboards Powered by R. " O'Reilly Media, Inc.", 2021.] (https://mastering-shiny.org/)
+- aktuell: [WICKHAM, Hadley. Mastering Shiny: Build Interactive Apps, Reports, and Dashboards Powered by R. " O'Reilly Media, Inc.", 2021.](https://mastering-shiny.org/)
 
 - [WICKHAM, Hadley; GROLEMUND, Garrett. R for data science: import, tidy, transform, visualize, and model data. " O'Reilly Media, Inc.", 2016.](https://www.amazon.de/R-Data-Science-Hadley-Wickham/dp/1491910399/ref=sr_1_1?__mk_de_DE=%C3%85M%C3%85%C5%BD%C3%95%C3%91&crid=2X119DOXJ8QG5&dchild=1&keywords=r+for+data+science&qid=1597574245&sprefix=r+for+da%2Caps%2C232&sr=8-1)
     
